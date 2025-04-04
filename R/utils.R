@@ -1,0 +1,106 @@
+#' Code to use the lsoda package inline. Not directly called by the user.
+#' @param ... arguments
+#' @examples
+#' library(Rcpp)
+#' sourceCpp(code="
+#'   // [[Rcpp::depends(lsoda)]]
+#'   #include \"lsoda.h\"
+#' 
+#'   // Describe the system.
+#'   using Parms = std::vector<double>;
+#'   Parms parms = {1.0E4};
+#'   static void fex(double t, double* y, double* ydot, void* data) {
+#'     Parms* parms = static_cast<Parms*>(data);
+#'     ydot[0] = (*parms)[0] * y[1] * y[2] - .04E0 * y[0];
+#'     ydot[2] = 3.0E7 * y[1] * y[1];
+#'     ydot[1] = -1.0 * (ydot[0] + ydot[2]);
+#'   }
+#'   auto fex2 = [parms](double t, double* y, double* ydot, void* data) {
+#'     ydot[0] = parms[0] * y[1] * y[2] - .04E0 * y[0];
+#'     ydot[2] = 3.0E7 * y[1] * y[1];
+#'     ydot[1] = -1.0 * (ydot[0] + ydot[2]);
+#'   };
+#'   class F {
+#'   public:
+#'     Parms parms;
+#'     F(Parms parms) : parms(parms) {}
+#'     void operator()(double t, double* y, double* ydot) {
+#'       ydot[0] = parms[0] * y[1] * y[2] - .04E0 * y[0];
+#'       ydot[2] = 3.0E7 * y[1] * y[1];
+#'       ydot[1] = -1.0 * (ydot[0] + ydot[2]);
+#'     }
+#'   };
+#'   // [[Rcpp::export]]
+#'     std::vector<double> test_lsoda(int which, Rcpp::Function fun) {
+#'      constexpr const int neq = 3;
+#'      double t         = 0e0;
+#'      double tout      = 0.4e0;
+#'      std::vector<double> y = {1e0, 0e0, 0.0};
+#'      int istate       = 1;
+#'  
+#'      LSODA::LSODA ode;
+#'      std::vector<double> res;
+#'      std::vector<double> yout;
+#'      F fex3(parms);
+#' 
+#'      for(size_t iout = 1; iout < 12; iout++) {
+#'          which == 0 ?
+#'          ode.lsoda_function(fex, neq, y, yout, &t, tout, &istate, &parms, 1e-4, 1e-8) :
+#'          which == 1 ?
+#'          ode.lsoda_function(fex2, neq, y, yout, &t, tout, &istate, nullptr, 1e-4, 1e-8) :
+#'          which == 2 ?
+#'          ode.lsoda_rfunctor<neq>(fun, neq, y, yout, &t, tout, &istate, 1e-4, 1e-8) :
+#'          // otherwise
+#'          ode.lsoda_functor(fex3, neq, y, yout, &t, tout, &istate,
+#'                             1e-4, 1e-8);
+#'          y = yout;
+#'  
+#'          res.push_back(y[0]);
+#'          res.push_back(y[1]);
+#'          res.push_back(y[2]);
+#'  
+#'          tout = tout * 10.0E0;
+#'       }
+#'     return res;
+#'   }
+#' 
+#' // [[Rcpp::export]]
+#' int test_lsoda_n(int n, int which, Rcpp::Function f) {
+#'   for (int i=0; i<n; i++) test_lsoda(which,f);
+#'   return 0;
+#' }
+#' ")
+#' expected = c(0.985172, 3.3864e-05, 0.0147939, 0.905514, 2.24042e-05,
+#'        0.0944634, 0.715803, 9.18446e-06, 0.284188, 0.450479, 3.22234e-06, 0.549517,
+#'        0.183171, 8.94046e-07, 0.816828, 0.0389738, 1.62135e-07, 0.961026, 0.00493686,
+#'        1.98442e-08, 0.995063, 0.00051665, 2.06765e-09, 0.999483, 5.20075e-05,
+#'        2.08041e-10, 0.999948, 5.20168e-06, 2.08068e-11, 0.999995, 5.19547e-07,
+#'        2.07819e-12, 0.999999)
+#' fun = function(t,y) {
+#'       ydot = rep(0,3)
+#'       ydot[1] = 1.0E4 * y[2] * y[3] - .04E0 * y[1];
+#'       ydot[3] = 3.0E7 * y[2] * y[2];
+#'       ydot[2] = -1.0 * (ydot[1] + ydot[3]);
+#'       ydot
+#'     }
+#' matrix(test_lsoda(0,fun),ncol=3,byrow=TRUE)
+#' 
+#' all(abs(sapply(0:3, test_lsoda, fun) - expected) < 1e-6)
+#' system.time(test_lsoda_n(100L,0L,fun))
+#' system.time(test_lsoda_n(100L,1L,fun))
+#' system.time(test_lsoda_n(100L,2L,fun)) # four times slower
+#' system.time(test_lsoda_n(100L,3L,fun))
+#' @keywords internal
+#' @rdname plugin
+inlineCxxPlugin <- function(...) {
+    ismacos <- Sys.info()[["sysname"]] == "Darwin"
+    openmpflag <- if (ismacos) "" else "$(SHLIB_OPENMP_CFLAGS)"
+    plugin <- Rcpp::Rcpp.plugin.maker(include.before = '#include "lsoda.h"',
+                                      libs = paste(openmpflag,
+                                                   "$(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS)"),
+                                      package = "lsoda")
+    settings <- plugin()
+    settings$env$PKG_CPPFLAGS <- paste("-I../inst/include", openmpflag)
+    ## if (!ismacos) settings$env$USE_CXX11 <- "yes"
+    settings
+}
