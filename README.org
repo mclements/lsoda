@@ -1,97 +1,352 @@
+* lsoda: C++ header library for ordinary differential equations
+
+** Summary
 
 
 
+** Installation
 
-#+begin_src R :session *R* :results output :exports both
 
+** Examples
+
+*** Set-up
+
+- We will use the ~Rcpp~ and ~lsoda~ packages.
+- For the examples, we will use specific times and initial values.
+- We also provide an R implementation of the ODEs that almost mirrors ~deSolve::lsoda()~. The main difference is that the rate function is not a list. 
+
+#+begin_src R :session *R* :results output :exports code
   library(Rcpp)
-  sourceCpp(code="
-  // [[Rcpp::depends(lsoda)]]
-  #include \"lsoda.h\"
-  // Describe the system.
-  using Parms = double;
-  Parms parms = 1.0E4;
-  static void fex(double t, double* y, double* ydot, void* data) {
-    Parms* parms = static_cast<Parms*>(data);
-    ydot[0] = (*parms) * y[1] * y[2] - .04E0 * y[0];
-    ydot[2] = 3.0E7 * y[1] * y[1];
-    ydot[1] = -1.0 * (ydot[0] + ydot[2]);
-  }
-  auto fex2 = [parms](double t, double* y, double* ydot, void* data) {
-    ydot[0] = parms * y[1] * y[2] - .04E0 * y[0];
-    ydot[2] = 3.0E7 * y[1] * y[1];
-    ydot[1] = -1.0 * (ydot[0] + ydot[2]);
-  };
-  class F {
-  public:
-    Parms parms;
-    F(Parms parms) : parms(parms) {}
-    void operator()(double t, double* y, double* ydot) {
-      ydot[0] = parms * y[1] * y[2] - .04E0 * y[0];
-      ydot[2] = 3.0E7 * y[1] * y[1];
-      ydot[1] = -1.0 * (ydot[0] + ydot[2]);
-    }
-  };
-  // [[Rcpp::export]]
-    std::vector<double> test_lsoda(int which, Rcpp::Function fun) {
-     constexpr const int neq = 3;
-     double t         = 0e0;
-     double tout      = 0.4e0;
-     std::vector<double> y = {1e0, 0e0, 0.0};
-     int istate       = 1;
-     LSODA::LSODA ode;
-     std::vector<double> res;
-     std::vector<double> yout;
-     F fex3(parms);
-     for(size_t iout = 1; iout < 12; iout++) {
-         which == 0 ?
-         ode.lsoda_function(fex, neq, y, yout, &t, tout, &istate, &parms, 1e-4, 1e-8) :
-         which == 1 ?
-         ode.lsoda_function(fex2, neq, y, yout, &t, tout, &istate, nullptr, 1e-4, 1e-8) :
-         which == 2 ?
-         ode.lsoda_rfunctor<neq>(fun, neq, y, yout, &t, tout, &istate, 1e-4, 1e-8) :
-         // otherwise
-         ode.lsoda_functor(fex3, neq, y, yout, &t, tout, &istate,
-                            1e-4, 1e-8);
-         y = yout;
-         res.push_back(y[0]);
-         res.push_back(y[1]);
-         res.push_back(y[2]);
-         tout = tout * 10.0E0;
-      }
-    return res;
-  }
-  // [[Rcpp::export]]
-  int test_lsoda_n(int n, int which, Rcpp::Function f) {
-  for (int i=0; i<n; i++) test_lsoda(which,f);
-  return 0;
-  }
-  ")
-
-  library(deSolve)
-  expected = c(0.985172, 3.3864e-05, 0.0147939, 0.905514, 2.24042e-05,
-               0.0944634, 0.715803, 9.18446e-06, 0.284188, 0.450479, 3.22234e-06, 0.549517,
-               0.183171, 8.94046e-07, 0.816828, 0.0389738, 1.62135e-07, 0.961026, 0.00493686,
-               1.98442e-08, 0.995063, 0.00051665, 2.06765e-09, 0.999483, 5.20075e-05,
-               2.08041e-10, 0.999948, 5.20168e-06, 2.08068e-11, 0.999995, 5.19547e-07,
-               2.07819e-12, 0.999999)
-  fun = function(t,y) {
+  library(lsoda)
+  times = c(0,0.4*10^(0:10))
+  y = c(1,0,0)
+  func = function(t,y,...) {
       ydot = rep(0,3)
       ydot[1] = 1.0E4 * y[2] * y[3] - .04E0 * y[1];
       ydot[3] = 3.0E7 * y[2] * y[2];
       ydot[2] = -1.0 * (ydot[1] + ydot[3]);
       ydot
   }
+  expected =
+      cbind(times[-1],
+            c(0.985172, 3.3864e-05, 0.0147939,
+              0.905514, 2.24042e-05, 0.0944634,
+              0.715803, 9.18446e-06, 0.284188,
+              0.450479, 3.22234e-06, 0.549517,
+              0.183171, 8.94046e-07, 0.816828,
+              0.0389738, 1.62135e-07, 0.961026,
+              0.00493686, 1.98442e-08, 0.995063,
+              0.00051665, 2.06765e-09, 0.999483,
+              5.20075e-05, 2.08041e-10, 0.999948,
+              5.20168e-06, 2.08068e-11, 0.999995,
+              5.19547e-07, 2.07819e-12, 0.999999) |> matrix(ncol=3,byrow=TRUE))
+  lsoda::ode(y,times,func, rtol=1e-10, atol=1e-10) |> print(digits=12)
+  deSolve::ode(y,times,\(...) list(func(...)), rtol=1e-10, atol=1e-10) |> print(digits=12)
+#+end_src
 
-  routput = lsoda(c(1,0,0),c(0,0.4*10^(0:10)),
-                  \(t,y,...) list(fun(t,y)), rtol=1e-4, atol=1e-8)
-  routput[-1,-1] - matrix(expected,ncol=3,byrow=TRUE)
-  matrix(test_lsoda(2,fun),ncol=3,byrow=TRUE) - routput[-1,-1]
+#+RESULTS:
+#+begin_example
+       time                y1                y2              y3
+ [1,] 0e+00 1.00000000000e+00 0.00000000000e+00 0.0000000000000
+ [2,] 4e-01 9.85172113672e-01 3.38639537739e-05 0.0147940223743
+ [3,] 4e+00 9.05518679079e-01 2.24047552536e-05 0.0944589161661
+ [4,] 4e+01 7.15827070247e-01 9.18553499650e-06 0.2841637442181
+ [5,] 4e+02 4.50518669367e-01 3.22290137707e-06 0.5494781077317
+ [6,] 4e+03 1.83202258840e-01 8.94237129398e-07 0.8167968469226
+ [7,] 4e+04 3.89833775436e-02 1.62176833676e-07 0.9610164602796
+ [8,] 4e+05 4.93827482381e-03 1.98499421037e-08 0.9950617053263
+ [9,] 4e+06 5.16809933531e-04 2.06829582151e-09 0.9994831879982
+[10,] 4e+07 5.20309786314e-05 2.08134614063e-10 0.9999479688132
+[11,] 4e+08 5.20788235135e-06 2.08316365935e-11 0.9999947920968
+[12,] 4e+09 5.20971334176e-07 2.08388640948e-12 0.9999994790266
+    time                 1                 2               3
+1  0e+00 1.00000000000e+00 0.00000000000e+00 0.0000000000000
+2  4e-01 9.85172113672e-01 3.38639537739e-05 0.0147940223743
+3  4e+00 9.05518679079e-01 2.24047552535e-05 0.0944589161661
+4  4e+01 7.15827069463e-01 9.18553479285e-06 0.2841637450023
+5  4e+02 4.50518669534e-01 3.22290145560e-06 0.5494781075648
+6  4e+03 1.83202258140e-01 8.94237124032e-07 0.8167968476227
+7  4e+04 3.89833779195e-02 1.62176835112e-07 0.9610164599037
+8  4e+05 4.93827519671e-03 1.98499436091e-08 0.9950617049534
+9  4e+06 5.16810013190e-04 2.06829613949e-09 0.9994831879185
+10 4e+07 5.20309877180e-05 2.08134650304e-10 0.9999479688041
+11 4e+08 5.20788076122e-06 2.08316302322e-11 0.9999947920984
+12 4e+09 5.20978966345e-07 2.08391693806e-12 0.9999994790190
+#+end_example
 
-  all(abs(sapply(0:3, test_lsoda, fun) - expected) < 1e-6)
-  system.time(test_lsoda_n(100L,0L,fun))
-  system.time(test_lsoda_n(100L,1L,fun))
-  system.time(test_lsoda_n(100L,2L,fun)) # four times slower
-  system.time(test_lsoda_n(100L,3L,fun))
+#+begin_src R :session *R* :results output :exports both
+  library(microbenchmark)
+  library(deSolve)
+  microbenchmark(lsoda::ode(y,times,func))
+  microbenchmark(deSolve::ode(y,times,\(...) list(func(...))))
+#+end_src
+
+#+RESULTS:
+: Unit: milliseconds
+:                        expr     min       lq    mean   median       uq     max neval
+:  lsoda::ode(y, times, func) 1.98007 2.022669 2.16534 2.049326 2.289213 3.55852   100
+: Unit: milliseconds
+:                                                   expr      min       lq     mean  median
+:  deSolve::ode(y, times, function(...) list(func(...))) 3.112731 3.186539 3.578144 3.35178
+:        uq      max neval
+:  3.769398 10.16234   100
+
+*** Example: historical C interface with ~(void*) data~
+
+#+begin_src R :session *R* :results output :exports both
+  sourceCpp(code="
+  // [[Rcpp::depends(lsoda)]]
+  #include \"lsoda.h\"
+  void fex(double t, double*  y, double* ydot, void* data) {
+    ydot[0] = 1.0E4 * y[1] * y[2] - .04E0 * y[0];
+    ydot[2] = 3.0E7 * y[1] * y[1];
+    ydot[1] = -1.0 * (ydot[0] + ydot[2]);
+  }
+  // [[Rcpp::export]]
+  Rcpp::NumericMatrix test_lsoda_1(std::vector<double> y, std::vector<double> times) {
+    return LSODA::ode(y, times, fex, (void*) nullptr);
+  }")
+  test_lsoda_1(y,times)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+       time           y1           y2         y3
+ [1,] 4e-01 1.000000e+00 0.000000e+00 0.00000000
+ [2,] 4e+00 9.117358e-01 2.313438e-05 0.08824104
+ [3,] 4e+01 7.168425e-01 9.224872e-06 0.28314824
+ [4,] 4e+02 4.506421e-01 3.223363e-06 0.54935464
+ [5,] 4e+03 1.832123e-01 8.942921e-07 0.81678683
+ [6,] 4e+04 3.898115e-02 1.621672e-07 0.96101868
+ [7,] 4e+05 4.937037e-03 1.984494e-08 0.99506294
+ [8,] 4e+06 5.162219e-04 2.065941e-09 0.99948378
+ [9,] 4e+07 5.176326e-05 2.070636e-10 0.99994824
+[10,] 4e+08 5.271152e-06 2.108472e-11 0.99999473
+[11,] 4e+09 4.827818e-07 1.931128e-12 0.99999952
+#+end_example
+
+*** Example: Using a functor class
+
+#+begin_src R :session *R* :results output :exports code
+  sourceCpp(code="
+  // [[Rcpp::depends(lsoda)]]
+  #include \"lsoda.h\"
+  class Functor {
+  public:
+    std::vector<double> operator()(double t, std::vector<double> y) {
+      std::vector<double> ydot(3);
+      ydot[0] = 1.0E4 * y[1] * y[2] - .04E0 * y[0];
+      ydot[2] = 3.0E7 * y[1] * y[1];
+      ydot[1] = -1.0 * (ydot[0] + ydot[2]);
+      return ydot;
+    }
+  };
+  // [[Rcpp::export]]
+  Rcpp::NumericMatrix test_lsoda_3(std::vector<double> y, std::vector<double> times) {
+    Functor functor;
+    return LSODA::ode(y, times, functor);
+  }")
+  test_lsoda_3(c(1,0,0),times)
+#+end_src
+
+
+*** Example: Using a lambda function
+
+#+begin_src R :session *R* :results output :exports both
+  sourceCpp(code="
+  // [[Rcpp::depends(lsoda)]]
+  #include \"lsoda.h\"
+  auto lambda = [](double t, std::vector<double> y) {
+      std::vector<double> ydot(3);
+      ydot[0] = 1E4 * y[1] * y[2] - .04E0 * y[0];
+      ydot[2] = 3.0E7 * y[1] * y[1];
+      ydot[1] = -1.0 * (ydot[0] + ydot[2]);
+      return ydot;
+    };
+  // [[Rcpp::export]]
+  Rcpp::NumericMatrix test_lsoda_4(std::vector<double> y,
+                                   std::vector<double> times,
+                                   double rtol = 1-6, double atol = 1e-6) {
+    return LSODA::ode(y, times, lambda, rtol, atol);
+  }")
+  test_lsoda_4(c(1,0,0),times,rtol=1e-10,atol=1e-10)
+#+end_src
+
+*** Using ~RcppArmadillo~
+
+- The following example includes an ~ode()~ implementation that uses Armadillo vectors. The implementation uses an adaptor for the C implementation.
+- We have also provided an example.
+
+#+begin_src R :session *R* :results output :exports both
+  sourceCpp(code="
+  // [[Rcpp::depends(lsoda)]]
+  // [[Rcpp::depends(RcppArmadillo)]]
+  #include \"RcppArmadillo.h\"
+  #include \"lsoda.h\"
+  template<class Functor>
+  void lsoda_arma_adaptor(double t, double* y, double* ydot, void* data) {
+    using Pair = std::pair<Functor*, int>;
+    Pair* pr = static_cast<Pair*>(data);
+    Functor* f = (*pr).first;
+    int N = (*pr).second;
+    arma::vec yv(N);
+    std::copy(y,y+N,yv.begin());
+    arma::vec ydotv = (*f)(t,yv); // determines the functor signature
+    std::copy(ydotv.begin(),ydotv.end(),ydot);
+  }
+  template<class Functor>
+  Rcpp::NumericMatrix ode(arma::vec y,
+			  arma::vec times,
+			  Functor functor,
+			  double rtol=1e-6, double atol = 1e-6) {
+    std::pair<Functor*,int> pair{&functor, y.size()};
+    std::vector<double> yv(y.begin(), y.end());
+    std::vector<double> timesv(times.begin(), times.end());
+    return LSODA::ode(yv, timesv, lsoda_arma_adaptor<Functor>, (void*) &pair, rtol, atol);
+  }
+  auto lambda = [](double t, arma::vec y) {
+      arma::vec ydot(3);
+      ydot[0] = 1E4 * y[1] * y[2] - .04E0 * y[0];
+      ydot[2] = 3.0E7 * y[1] * y[1];
+      ydot[1] = -1.0 * (ydot[0] + ydot[2]);
+      return ydot;
+    };
+  // [[Rcpp::export]]
+  Rcpp::NumericMatrix test_lsoda_5(arma::vec y,
+                                   arma::vec times,
+                                   double rtol = 1-6, double atol = 1e-6) {
+    return ode(y, times, lambda, rtol, atol);
+  }  ")
+  test_lsoda_5(c(1,0,0),times,rtol=1e-10,atol=1e-10)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+       time           y1           y2         y3
+ [1,] 0e+00 1.000000e+00 0.000000e+00 0.00000000
+ [2,] 4e-01 9.851721e-01 3.386395e-05 0.01479402
+ [3,] 4e+00 9.055187e-01 2.240476e-05 0.09445892
+ [4,] 4e+01 7.158271e-01 9.185535e-06 0.28416374
+ [5,] 4e+02 4.505187e-01 3.222901e-06 0.54947811
+ [6,] 4e+03 1.832023e-01 8.942371e-07 0.81679685
+ [7,] 4e+04 3.898338e-02 1.621768e-07 0.96101646
+ [8,] 4e+05 4.938275e-03 1.984994e-08 0.99506171
+ [9,] 4e+06 5.168099e-04 2.068296e-09 0.99948319
+[10,] 4e+07 5.203098e-05 2.081346e-10 0.99994797
+[11,] 4e+08 5.207882e-06 2.083164e-11 0.99999479
+[12,] 4e+09 5.209713e-07 2.083886e-12 0.99999948
+#+end_example
+
+
+#+begin_src R :session *R* :results output :exports both
+  sourceCpp(code="
+   // [[Rcpp::depends(BH)]]
+   #include <boost/numeric/odeint.hpp>
+   #include <boost/numeric/ublas/vector.hpp>
+   // [[Rcpp::export]]
+   std::vector<double> test_odeint(int n_steps = 11) {
+      namespace ublas = boost::numeric::ublas;
+      namespace odeint = boost::numeric::odeint;
+      using state_type = ublas::vector<double>;
+      double tstart, tstop;
+      tstart           = 0e0;
+      tstop             = 0.4e0;
+      ublas::vector<double> y(3); y[0]=1.0; y[1]=y[2]=0.0;
+      // auto stepper = odeint::make_controlled(odeint::runge_kutta_dopri5<state_type>(), 1.0e-6, 1.0e-5);
+      auto stepper = odeint::make_dense_output<odeint::rosenbrock4<double> >(1.0e-10, 1.0e-10);
+      auto sys = [](const state_type &y, state_type &ydot, const double t) {
+        ydot[0] = 1E4 * y[1] * y[2] - .04E0 * y[0];
+        ydot[2] = 3.0E7 * y[1] * y[1];
+        ydot[1] = -1.0 * (ydot[0] + ydot[2]);
+      };
+      auto jac = [](const state_type &y, ublas::matrix<double> &J, const double &t, state_type &dfdt) {
+        J(0,0) = -0.04;
+        J(0,1) = 1e4*y[2];
+        J(0,2) = 1e4*y[1];
+        J(2,0) = 0.0;
+        J(2,1) = 2.0*3.0E7*y[1];
+        J(2,2) = 0.0;
+        J(1,0) = 0.04;
+        J(1,1) = -2.0*3.0E7*y[1] - 1e4*y[2];
+        J(1,2) = -1e4*y[1];
+        dfdt(0) = 0.0;
+        dfdt(1) = 0.0;
+        dfdt(2) = 0.0;
+        // ydot[0] = 1e4 * y[1] * y[2] - .04E0 * y[0];
+        // ydot[2] = 3.0E7 * y[1] * y[1];
+        // ydot[1] = -(ydot[0] + ydot[2]);
+        //         = -(1e4 * y[1] * y[2] - .04E0 * y[0] + 3.0E7 * y[1] * y[1]);
+      };
+      std::vector<double> res;
+      for(size_t iout = 1; iout <= n_steps; iout++) {
+          odeint::integrate_const(stepper, std::make_pair(sys,jac), y, tstart, tstop, (tstop-tstart)/2);
+          // odeint::integrate_adaptive(stepper, sys, y, tstart, tstop, tstop-tstart);
+          // Rprintf(\"t=%g, y={%g,%g,%g}\\n\",tstop,y[0],y[1],y[2]);
+          res.push_back(y[0]);
+          res.push_back(y[1]);
+          res.push_back(y[2]);
+          tstart = tstop;
+          tstop *= 10.0E0;
+       }
+     return res;
+   }
+")
+test_odeint() |> matrix(ncol=3,byrow=TRUE)
 
 #+end_src
+
+#+RESULTS:
+#+begin_example
+              [,1]         [,2]       [,3]
+ [1,] 9.851721e-01 3.386395e-05 0.01479402
+ [2,] 9.055187e-01 2.240476e-05 0.09445892
+ [3,] 7.158271e-01 9.185535e-06 0.28416375
+ [4,] 4.505187e-01 3.222901e-06 0.54947811
+ [5,] 1.832023e-01 8.942371e-07 0.81679685
+ [6,] 3.898338e-02 1.621768e-07 0.96101646
+ [7,] 4.938274e-03 1.984994e-08 0.99506171
+ [8,] 5.168096e-04 2.068294e-09 0.99948319
+ [9,] 5.203071e-05 2.081335e-10 0.99994797
+[10,] 5.207666e-06 2.083077e-11 0.99999479
+[11,] 5.208071e-07 2.083229e-12 0.99999948
+#+end_example
+
+#+begin_src python :session *Python*
+  import numpy as np
+  from scipy.integrate import odeint
+  def model(y,t):
+      ydot = [0,0,0]
+      ydot[0] = 1.0E4 * y[1] * y[2] - .04E0 * y[0];
+      ydot[2] = 3.0E7 * y[1] * y[1];
+      ydot[1] = -1.0 * (ydot[0] + ydot[2]);
+      return ydot
+  y0 = [1,0,0]
+  times = 0.4*(10**np.arange(0,11))
+  times = np.insert(times,0,0.0)
+  y = odeint(model, y0, times, atol=1e-10, rtol=1e-10)
+  print(y)
+#+end_src
+
+#+RESULTS:
+: None
+
+#+begin_src bash :results output
+cd ~/work && ./lsoda | head -n 11
+#+end_src
+
+#+RESULTS:
+#+begin_example
+ at t=   4.0000e-01 y= 9.851721136719e-01 3.386395377393e-05 1.479402237428e-02
+ at t=   4.0000e+00 y= 9.055186790786e-01 2.240475525356e-05 9.445891616613e-02
+ at t=   4.0000e+01 y= 7.158270702469e-01 9.185534996495e-06 2.841637442181e-01
+ at t=   4.0000e+02 y= 4.505186693669e-01 3.222901377065e-06 5.494781077317e-01
+ at t=   4.0000e+03 y= 1.832022588403e-01 8.942371293980e-07 8.167968469226e-01
+ at t=   4.0000e+04 y= 3.898337754361e-02 1.621768336756e-07 9.610164602796e-01
+ at t=   4.0000e+05 y= 4.938274823805e-03 1.984994210369e-08 9.950617053263e-01
+ at t=   4.0000e+06 y= 5.168099335306e-04 2.068295821513e-09 9.994831879982e-01
+ at t=   4.0000e+07 y= 5.203097863135e-05 2.081346140629e-10 9.999479688132e-01
+ at t=   4.0000e+08 y= 5.207882351348e-06 2.083163659354e-11 9.999947920968e-01
+ at t=   4.0000e+09 y= 5.209713341763e-07 2.083886409477e-12 9.999994790266e-01
+#+end_example
+
+- In summary, the C++ version of lsoda is based on a slightly older version than that that was used in deSolve and scipy. The differences seem to be minor.

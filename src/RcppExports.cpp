@@ -12,17 +12,17 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
 // ode
-Rcpp::NumericMatrix ode(Rcpp::Function f, std::vector<double> y, std::vector<double> ts, double rtol, double atol);
-RcppExport SEXP _lsoda_ode(SEXP fSEXP, SEXP ySEXP, SEXP tsSEXP, SEXP rtolSEXP, SEXP atolSEXP) {
+Rcpp::NumericMatrix ode(std::vector<double> y, std::vector<double> times, Rcpp::Function func, double rtol, double atol);
+RcppExport SEXP _lsoda_ode(SEXP ySEXP, SEXP timesSEXP, SEXP funcSEXP, SEXP rtolSEXP, SEXP atolSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< Rcpp::Function >::type f(fSEXP);
     Rcpp::traits::input_parameter< std::vector<double> >::type y(ySEXP);
-    Rcpp::traits::input_parameter< std::vector<double> >::type ts(tsSEXP);
+    Rcpp::traits::input_parameter< std::vector<double> >::type times(timesSEXP);
+    Rcpp::traits::input_parameter< Rcpp::Function >::type func(funcSEXP);
     Rcpp::traits::input_parameter< double >::type rtol(rtolSEXP);
     Rcpp::traits::input_parameter< double >::type atol(atolSEXP);
-    rcpp_result_gen = Rcpp::wrap(ode(f, y, ts, rtol, atol));
+    rcpp_result_gen = Rcpp::wrap(ode(y, times, func, rtol, atol));
     return rcpp_result_gen;
 END_RCPP
 }

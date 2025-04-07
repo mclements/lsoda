@@ -53,18 +53,12 @@ namespace LSODA {
 
   constexpr double ETA = std::numeric_limits<double>::epsilon();
   
-  // template<class Functor>
-  // void lsoda_functor_adaptor(double t, double* y, double* ydot, void* data) {
-  //   Functor* f = static_cast<Functor*>(data);
-  //   (*f)(t,y,ydot);
-  // }
-
   template<class Functor>
   void lsoda_functor_adaptor(double t, double* y, double* ydot, void* data) {
     using Pair = std::pair<Functor*, int>;
-    Pair* pr = static_cast<Pair*>(data);
-    Functor* f = (*pr).first;
-    int N = (*pr).second;
+    Pair* pair = static_cast<Pair*>(data);
+    Functor* f = (*pair).first;
+    int N = (*pair).second;
     std::vector<double> yv(N);
     std::copy(y,y+N,yv.begin());
     std::vector<double> ydotv = (*f)(t,yv);
@@ -74,9 +68,9 @@ namespace LSODA {
   inline
   void lsoda_rfunctor_adaptor(double t, double* y, double* ydot, void* data) {
     using Pair = std::pair<Rcpp::Function, int>;
-    Pair* pr = static_cast<Pair*>(data);
-    Rcpp::Function f = (*pr).first;
-    int N = (*pr).second;
+    Pair* pair = static_cast<Pair*>(data);
+    Rcpp::Function f = (*pair).first;
+    int N = (*pair).second;
     std::vector<double> yv(N);
     std::copy(y,y+N,yv.begin());
     std::vector<double> ydotv = Rcpp::as<std::vector<double> >(f(t,yv));
@@ -2125,8 +2119,10 @@ namespace LSODA {
       iopt  = 0;
       jt    = 2;
 
-      yout = y; // copy
-      yout.insert(yout.begin(), 0.0); // lsoda() uses 1-indexing
+      // lsoda() uses 1-indexing
+      yout.resize(y.size()+1); // is this needed?
+      yout[0] = 0.0;
+      std::copy(y.begin(), y.end(), yout.begin()+1);
     
       // Set the tolerance. We should do it only once.
       rtol_.resize(neq + 1, rtol);
@@ -2210,31 +2206,31 @@ namespace LSODA {
 			const double tout, int *istate, 
 			double rtol, double atol)
     {
-      using Pair = std::pair<Rcpp::Function, int>;
-      Pair pr = std::make_pair(rfun,neq);
+      std::pair<Rcpp::Function, int> pair(rfun,neq);
       lsoda_function(lsoda_rfunctor_adaptor, neq, y, yout, t, tout, istate,
-		     (void*) &pr, rtol, atol);
+		     (void*) &pair, rtol, atol);
     }
     
   };
 
   // utility wrapper
   inline
-  Rcpp::NumericMatrix ode(LSODA_ODE_SYSTEM_TYPE f,
-			  std::vector<double> y, std::vector<double> ts,
+  Rcpp::NumericMatrix ode(std::vector<double> y,
+			  std::vector<double> times,
+			  LSODA_ODE_SYSTEM_TYPE func,
 			  void* data = (void*) nullptr,
-			  double rtol=1e-6, double atol = 1e-8) {
-    double t = ts[0], tout;
+			  double rtol=1e-6, double atol = 1e-6) {
+    double t = times[0], tout;
     std::vector<double> yout(y.size());
     int istate = 1;
     size_t i, j;
-    Rcpp::NumericMatrix res(ts.size(),y.size()+1);
+    Rcpp::NumericMatrix res(times.size(),y.size()+1);
     res(0,0) = t;
     for(j=0; j<y.size(); j++) res(0,j+1)=y[j];
     LSODA lsoda;
-    for(i = 1; i < ts.size(); i++) {
-        tout = ts[i];
-        lsoda.lsoda_function(f, y.size(), y, yout, &t, tout, &istate, data, rtol, atol);
+    for(i = 1; i < times.size(); i++) {
+        tout = times[i];
+        lsoda.lsoda_function(func, y.size(), y, yout, &t, tout, &istate, data, rtol, atol);
         y = yout;
         res(i,0) = t;
         for(j=0; j<y.size(); j++) res(i,j+1)=y[j];
@@ -2247,12 +2243,12 @@ namespace LSODA {
   }
   
   template<class Functor>
-  Rcpp::NumericMatrix ode(Functor f, std::vector<double> y,
-			  std::vector<double> ts,
-			  double rtol=1e-6, double atol = 1e-8) {
-    using Pair = std::pair<Functor*,int>;
-    Pair pr = std::make_pair(&f,y.size());
-    return ode(lsoda_functor_adaptor<Functor>, y, ts, (void*) &pr, rtol, atol);
+  Rcpp::NumericMatrix ode(std::vector<double> y,
+			  std::vector<double> times,
+			  Functor functor,
+			  double rtol=1e-6, double atol = 1e-6) {
+    std::pair<Functor*,int> pair(&functor, y.size());
+    return ode(y, times, lsoda_functor_adaptor<Functor>, (void*) &pair, rtol, atol);
   }
 
 };
