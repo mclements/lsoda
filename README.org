@@ -4,7 +4,7 @@
 
 - This R package provides a C++ header file for using the ~lsoda~ function from ~ODEPACK~. This package fills a gap to allow ~LSODA::ode()~ to be called from C++ in other packages.
 - We provide an example R function ~lsoda::ode()~, which is similar to ~deSolve::lsoda()~. The former function implements the update of the state vector ~y~ and allows for calculated values, but does not implement events. This function is a proof-of-principle and there is no reason to prefer this function to the one from ~deSolve~.
-- Signatures for ~LSODA::ode()~:
+- C++ signatures for ~LSODA::ode()~:
 
 #+begin_src Cpp :exports code :eval yes
   typedef void (*LSODA_ODE_SYSTEM_TYPE)(double t, double *y, double *dydt, void *);
@@ -25,7 +25,8 @@
 #+end_src
 
 - For the first ~ode()~ signature, the template argument ~Vector~ can include ~std::vector<double>~, ~arma::vec~ or ~Eigen::VectorXd~.
-- For the second signature, the functor takes the signature ~Vector(double,Vector)~ for template type ~Vector~ (again including ~std::vector<double>~, ~arma::vec~ or ~Eigen::VectorXd~). The functor could be a class or a function. 
+- For the second signature, the functor takes the signature ~Vector(double,Vector)~ for template type ~Vector~ (again including ~std::vector<double>~, ~arma::vec~ or ~Eigen::VectorXd~). The functor can be a class with a method ~(Vector)operator()(double,Vector)~, or a function.
+- The ~LSODA::ode()~ functions return a ~Rcpp::NumericMatrix~ with the first column being time, then with columns for the state vectors, then with columns for the other results.
 - Note: The C++ version of ~lsoda~ is a different version to the Fortran code  used in ~deSolve~ and ~scipy~. The differences are minor.
 
 
@@ -40,7 +41,7 @@
 
 ** Examples
 
-*** Set-up
+*** Example: set-up and calling from R
 
 - We will use the ~Rcpp~, ~lsoda~ and ~deSolve~ packages.
 - For the examples, we will use specific times and initial values.
