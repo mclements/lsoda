@@ -15,8 +15,11 @@ Rcpp::NumericMatrix ode(std::vector<double> y,
 			std::vector<double> times,
 			Rcpp::Function func,
 			double rtol = 1e-6, double atol = 1e-6) {
-  using Pair = std::pair<Rcpp::Function,int>;
-  Pair pr = std::make_pair(func, y.size());
-  return LSODA::ode(y, times, LSODA::lsoda_rfunctor_adaptor, (void*) &pr, rtol, atol);
+  using namespace Rcpp;
+  using Tuple = std::tuple<Function,size_t,size_t>;
+  List vals = as<List>(func(times[0],y));
+  size_t nres = (vals.size() > 1) ? (as<std::vector<double> >(vals[1])).size() : 0;
+  Tuple pr = std::make_tuple(func, y.size(), y.size()+nres);
+  return LSODA::ode(y, times, LSODA::lsoda_rfunctor_adaptor, y.size()+nres,
+		    (void*) &pr, rtol, atol);
 }
-  

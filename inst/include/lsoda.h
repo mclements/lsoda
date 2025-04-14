@@ -18,13 +18,12 @@
  *   Organization:  Subconscious Compute
  *        License:  MIT License
  *
- * Changes:
+ * Further changes by Mark Clements:
  * - Refactored into a header-only library
- * - Simplified the includes to only <Rcpp.h>
+ * - Simplified the includes to <Rcpp.h>
  * - Used the LSODA namespace
  * - Modest changes to lsoda() to transform to and from 1-based indexing
- * - Main calling functions are lsoda_function(), lsoda_functor()
- *   and lsoda_rfunctor() methods
+ * - Main calling functions are ode().
  *
  *         Author:  Mark Clements <mark.clements@ki.se>
  *   Organization:  Karolinska Institutet
@@ -52,29 +51,50 @@ namespace LSODA {
   typedef void (*LSODA_ODE_SYSTEM_TYPE)(double t, double *y, double *dydt, void *);
 
   constexpr double ETA = std::numeric_limits<double>::epsilon();
+  // #define ETA 2.2204460492503131e-16
+  
+  // template<class Func>
+  // void lsoda_function_adaptor(double t, double* y, double* ydot, void* data) {
+  //   using Tuple = std::tuple<Func*, void*, size_t, size_t>;
+  //   Tuple* tuple = static_cast<Tuple*>(data);
+  //   Func* func = std::get<0>(*tuple);
+  //   void* nested_data = std::get<1>(*tuple);
+  //   size_t neq = std::get<2>(*tuple);
+  //   size_t nout = std::get<3>(*tuple);
+  //   (*func)(t, y, ydot, nested_data);
+  //   if (nout > neq)
+  //     for (size_t i=neq; i<nout; i++) ydot[i] = 0.0;
+  // }
   
   template<class Functor>
   void lsoda_functor_adaptor(double t, double* y, double* ydot, void* data) {
-    using Pair = std::pair<Functor*, int>;
-    Pair* pair = static_cast<Pair*>(data);
-    Functor* f = (*pair).first;
-    int N = (*pair).second;
-    std::vector<double> yv(N);
-    std::copy(y,y+N,yv.begin());
+    using Tuple = std::tuple<Functor*, size_t, size_t>;
+    Tuple* tuple = static_cast<Tuple*>(data);
+    Functor* f = std::get<0>(*tuple);
+    size_t neq = std::get<1>(*tuple);
+    // size_t nout = std::get<2>(*tuple);
+    std::vector<double> yv(neq);
+    std::copy(y,y+neq,yv.begin());
     std::vector<double> ydotv = (*f)(t,yv);
     std::copy(ydotv.begin(),ydotv.end(),ydot);
   }
 
   inline
   void lsoda_rfunctor_adaptor(double t, double* y, double* ydot, void* data) {
-    using Pair = std::pair<Rcpp::Function, int>;
-    Pair* pair = static_cast<Pair*>(data);
-    Rcpp::Function f = (*pair).first;
-    int N = (*pair).second;
-    std::vector<double> yv(N);
-    std::copy(y,y+N,yv.begin());
-    std::vector<double> ydotv = Rcpp::as<std::vector<double> >(f(t,yv));
+    using Tuple = std::tuple<Rcpp::Function, size_t, size_t>;
+    Tuple* tuple = static_cast<Tuple*>(data);
+    Rcpp::Function f = std::get<0>(*tuple);
+    size_t neq = std::get<1>(*tuple);
+    size_t nout = std::get<2>(*tuple);
+    std::vector<double> yv(neq);
+    std::copy(y,y+neq,yv.begin());
+    Rcpp::List vals = Rcpp::as<Rcpp::List>(f(t,yv));
+    std::vector<double> ydotv = Rcpp::as<std::vector<double> >(vals[0]);
     std::copy(ydotv.begin(),ydotv.end(),ydot);
+    if (vals.size() > 1 && nout > neq) {
+      std::vector<double> yresv = Rcpp::as<std::vector<double> >(vals[1]);
+      std::copy(yresv.begin(),yresv.end(),ydot+neq);
+    }
   }
 
   class LSODA {
@@ -322,7 +342,7 @@ namespace LSODA {
     {
       if (!(tout > *t)) Rcpp::stop("tout <= *t");
 
-      int mxstp0 = 500, mxhnl0 = 10;
+      int mxstp0 = 5000, mxhnl0 = 10;
 
       int iflag = 0, lenyh = 0, ihit = 0;
 
@@ -640,7 +660,8 @@ namespace LSODA {
 	  sum = 1. / (tol * w0 * w0) + tol * sum * sum;
 	  h0  = 1. / sqrt(sum);
 	  h0  = std::min(h0, tdist);
-	  h0  = h0 * ((tout - *t >= 0.) ? 1. : -1.);
+	  // h0  = h0 * ((tout - *t >= 0.) ? 1. : -1.);
+	  h0 = sign(h0, tout - *t);
 	} /* end if ( h0 == 0. )   */
         /*
 	  Adjust h0 if necessary to meet hmax bound.
@@ -777,8 +798,8 @@ namespace LSODA {
 	  }
 	}
 	tolsf = ETA * vmnorm(n, yh_[1], ewt);
-	if(tolsf > 0.01) {
-	  tolsf = tolsf * 200.;
+	if(tolsf > 1.0) {
+	  tolsf = tolsf * 2.;
 	  if(nst == 0) {
 	    REprintf("lsoda -- at start of problem, too much accuracy\n");
 	    REprintf("         requested for precision of machine,\n");
@@ -1009,6 +1030,7 @@ namespace LSODA {
 	hold  = h_;
 	nslp  = 0;
 	ipup  = miter;
+	iret = 3;
 	/*
 	  Initialize switching parameters.  meth_ = 1 is assumed initially.
 	*/
@@ -1044,6 +1066,7 @@ namespace LSODA {
 	if(meth_ != mused) {
 	  cfode(meth_);
 	  ialth = l;
+	  iret = 1; // not needed?
 	  resetcoeff();
 	}
 	if(h_ != hold) {
@@ -1305,6 +1328,11 @@ namespace LSODA {
 
     } /* end ewset   */
 
+    /* C implementation for SIGN() */
+    double sign(double a, double b) {
+      return (b >= 0.0) ? fabs(a) : -fabs(a);
+    }
+    
     /*
       Intdy computes interpolated values of the k-th derivative of the
       dependent variable vector y, and stores it in dky.  This routine
@@ -1330,7 +1358,7 @@ namespace LSODA {
     void intdy(double t, int k, std::vector<double> &dky, int *iflag)
     {
       int ic, jp1 = 0;
-      double c, r, s, tp;
+      double c, r, s, tp, tfuzz, tn1;
 
       *iflag = 0;
       if(k < 0 || k > (int)nq) {
@@ -1338,8 +1366,11 @@ namespace LSODA {
 	*iflag = -1;
 	return;
       }
-      tp = tn_ - hu - 100. * ETA * (tn_ + hu);
-      if((t - tp) * (t - tn_) > 0.) {
+      tfuzz = 100. * ETA * sign(abs(tn_)+abs(hu), hu);
+      tp = tn_ - hu - tfuzz;
+      // tp = tn_ - hu - 100. * ETA * (tn_ + hu);
+      tn1 = tn_ + tfuzz;
+      if((t - tp) * (t - tn1) > 0.) {
 	REprintf("intdy -- t = %g illegal. t not in interval tcur - hu to tcur\n", t);
 	*iflag = -2;
 	return;
@@ -2154,7 +2185,7 @@ namespace LSODA {
 
     size_t illin, init, ierpj, iersl, jcur, l, miter, maxord, maxcor, msbp, mxncf;
 
-    int kflag, jstart;
+    int kflag, jstart, iret;
 
     size_t ixpr = 0, jtyp, mused, mxordn, mxords = 12;
     size_t meth_;
@@ -2189,28 +2220,6 @@ namespace LSODA {
   public:
     void *param = nullptr;
 
-    template<class Functor>
-    void lsoda_functor(Functor functor,
-		       const size_t neq, std::vector<double> &y,
-		       std::vector<double> &yout, double *t,
-		       const double tout, int *istate, 
-		       double rtol, double atol)
-    {
-      lsoda_function(lsoda_functor_adaptor<Functor>, neq, y, yout, t, tout, istate,
-		     (void*) &functor, rtol, atol);
-    }
-
-    void lsoda_rfunctor(Rcpp::Function rfun,
-			const size_t neq, std::vector<double> &y,
-			std::vector<double> &yout, double *t,
-			const double tout, int *istate, 
-			double rtol, double atol)
-    {
-      std::pair<Rcpp::Function, int> pair(rfun,neq);
-      lsoda_function(lsoda_rfunctor_adaptor, neq, y, yout, t, tout, istate,
-		     (void*) &pair, rtol, atol);
-    }
-    
   };
 
   // utility wrapper
@@ -2218,37 +2227,57 @@ namespace LSODA {
   Rcpp::NumericMatrix ode(std::vector<double> y,
 			  std::vector<double> times,
 			  LSODA_ODE_SYSTEM_TYPE func,
+			  size_t nout = 0, // default value => y.size()
 			  void* data = (void*) nullptr,
 			  double rtol=1e-6, double atol = 1e-6) {
+    if (nout == 0) nout = y.size();
+    if (nout < y.size()) Rcpp::stop("nout < y.size()");
+    LSODA lsoda;
     double t = times[0], tout;
-    std::vector<double> yout(y.size());
+    std::vector<double> yin(nout,0.0), yout(nout), ydot(nout);
     int istate = 1;
     size_t i, j;
-    Rcpp::NumericMatrix res(times.size(),y.size()+1);
+    std::copy(y.begin(),y.end(),yin.begin());
+    Rcpp::NumericMatrix res(times.size(),nout+1);
     res(0,0) = t;
     for(j=0; j<y.size(); j++) res(0,j+1)=y[j];
-    LSODA lsoda;
+    if (nout > y.size()) {
+      (*func)(t, &yin[0], &ydot[0], data); // could this change data?
+      for(j=y.size(); j<nout; j++)
+	res(0,j+1)=ydot[j];
+    }
     for(i = 1; i < times.size(); i++) {
         tout = times[i];
-        lsoda.lsoda_function(func, y.size(), y, yout, &t, tout, &istate, data, rtol, atol);
-        y = yout;
+        lsoda.lsoda_function(func, nout, yin, yout, &t, tout, &istate, data, rtol, atol);
+        yin = yout;
         res(i,0) = t;
-        for(j=0; j<y.size(); j++) res(i,j+1)=y[j];
+        for(j=0; j<y.size(); j++) res(i,j+1)=yout[j];
+	if (nout > y.size()) {
+	  (*func)(t, &yin[0], &ydot[0], data); // could this change data?
+	  for(j=y.size(); j<nout; j++) {
+	    res(i,j+1)=ydot[j];
+	    yin[j]=0.0; // reset values for better numerical properties
+	  }
+	}
     }
-    Rcpp::CharacterVector nms(y.size()+1);
+    Rcpp::CharacterVector nms(nout+1);
     nms[0] = "time";
-    for (i=1; i<(size_t)nms.size(); i++) nms[i] = "y" + std::to_string(i);
+    for (j=0; j<y.size(); j++) nms[j+1] = "y" + std::to_string(j+1);
+    if (nout > y.size())
+      for(j=y.size(); j<nout; j++) nms[j+1] = "res" + std::to_string(j-y.size()+1);
     colnames(res) = nms;
     return res;
   }
+  // typedef void (*LSODA_ODE_SYSTEM_TYPE)(double t, double *y, double *dydt, void *);
   
   template<class Functor>
   Rcpp::NumericMatrix ode(std::vector<double> y,
 			  std::vector<double> times,
 			  Functor functor,
 			  double rtol=1e-6, double atol = 1e-6) {
-    std::pair<Functor*,int> pair(&functor, y.size());
-    return ode(y, times, lsoda_functor_adaptor<Functor>, (void*) &pair, rtol, atol);
+    size_t nout = functor(times[0],y).size();
+    std::tuple<Functor*,size_t,size_t> tuple(&functor, y.size(), nout);
+    return ode(y, times, lsoda_functor_adaptor<Functor>, nout, (void*) &tuple, rtol, atol);
   }
 
 };

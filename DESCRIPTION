@@ -7,6 +7,7 @@ Maintainer: Mark Clements <mark.clements@ki.se>
 Description: A C++ header library for using the libsoda-cxx C++ library with R.
 License: MIT + file LICENSE
 Imports: Rcpp (>= 1.0.12)
+Suggests: deSolve, RcppArmadillo
 LinkingTo: Rcpp
 RoxygenNote: 7.3.2
 Encoding: UTF-8
