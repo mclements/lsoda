@@ -54,32 +54,6 @@ namespace LSODA {
   constexpr double ETA = std::numeric_limits<double>::epsilon();
   // #define ETA 2.2204460492503131e-16
   
-  // template<class Func>
-  // void lsoda_function_adaptor(double t, double* y, double* ydot, void* data) {
-  //   using Tuple = std::tuple<Func*, void*, size_t, size_t>;
-  //   Tuple* tuple = static_cast<Tuple*>(data);
-  //   Func* func = std::get<0>(*tuple);
-  //   void* nested_data = std::get<1>(*tuple);
-  //   size_t neq = std::get<2>(*tuple);
-  //   size_t nout = std::get<3>(*tuple);
-  //   (*func)(t, y, ydot, nested_data);
-  //   if (nout > neq)
-  //     for (size_t i=neq; i<nout; i++) ydot[i] = 0.0;
-  // }
-  
-  // template<class Functor>
-  // void lsoda_functor_adaptor(double t, double* y, double* ydot, void* data) {
-  //   using Tuple = std::tuple<Functor*, size_t, size_t>;
-  //   Tuple* tuple = static_cast<Tuple*>(data);
-  //   Functor* f = std::get<0>(*tuple);
-  //   size_t neq = std::get<1>(*tuple);
-  //   // size_t nout = std::get<2>(*tuple);
-  //   std::vector<double> yv(neq);
-  //   std::copy(y,y+neq,yv.begin());
-  //   std::vector<double> ydotv = (*f)(t,yv);
-  //   std::copy(ydotv.begin(),ydotv.end(),ydot);
-  // }
-
   template<class Functor, class Vector>
   void lsoda_functor_adaptor(double t, double* y, double* ydot, void* data) {
     using Tuple = std::tuple<Functor*, size_t, size_t>;
