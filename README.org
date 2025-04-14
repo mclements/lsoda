@@ -63,6 +63,12 @@
 #+end_src
 
 #+RESULTS:
+: 
+: Attaching package: ‘deSolve’
+: 
+: The following object is masked from ‘package:lsoda’:
+: 
+:     ode
 : [1] -7.533720e-08  7.532629e-08
 
 #+begin_src R :session *R* :results output :exports both :eval no
@@ -201,7 +207,7 @@
 [12,] 4e+09 5.209433e-07 2.083774e-12 0.99999948    1
 #+end_example
 
-*** Using ~RcppArmadillo~
+*** Example: Using ~RcppArmadillo~
 
 - The following example provides an ~ode()~ implementation that uses Armadillo vectors.
 - The signature is:

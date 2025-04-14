@@ -127,7 +127,7 @@ namespace LSODA {
       size_t v = 0, vmax = 0;
       size_t idmax = 1;
       for(size_t i = 1; i <= n; i++) {
-	v = abs(dx[i + offset]);
+	v = std::abs(dx[i + offset]);
 	if(v > vmax) {
 	  vmax  = v;
 	  idmax = i;
@@ -632,8 +632,8 @@ namespace LSODA {
 	  fabs(h0) is made < fabs(tout-*t) in any case.
 	*/
 	if(h0 == 0.) {
-	  tdist = fabs(tout - *t);
-	  w0    = std::max(fabs(*t), fabs(tout));
+	  tdist = std::abs(tout - *t);
+	  w0    = std::max(std::abs(*t), std::abs(tout));
 	  if(tdist < 2. * ETA * w0) {
 	    REprintf("[lsoda] tout too close to t to start integration\n ");
 	    terminate(istate);
@@ -649,7 +649,7 @@ namespace LSODA {
 	    for(size_t i = 1; i <= n; i++) {
 	      if(itol_ == 2 || itol_ == 4)
 		atoli = atol_[i];
-	      ayi = fabs(y[i]);
+	      ayi = std::abs(y[i]);
 	      if(ayi != 0.)
 		tol = std::max(tol, atoli / ayi);
 	    }
@@ -666,7 +666,7 @@ namespace LSODA {
         /*
 	  Adjust h0 if necessary to meet hmax bound.
         */
-	rh = fabs(h0) * hmxi;
+	rh = std::abs(h0) * hmxi;
 	if(rh > 1.)
 	  h0 /= rh;
 
@@ -749,8 +749,8 @@ namespace LSODA {
 	      return;
 	    }
 	  }
-	  hmx  = fabs(tn_) + fabs(h_);
-	  ihit = fabs(tn_ - tcrit) <= (100. * ETA * hmx);
+	  hmx  = std::abs(tn_) + std::abs(h_);
+	  ihit = std::abs(tn_ - tcrit) <= (100. * ETA * hmx);
 	  if(ihit) {
 	    *t = tcrit;
 	    successreturn(y, t, itask, ihit, tcrit, istate);
@@ -903,8 +903,8 @@ namespace LSODA {
 	      return;
 	    }
 	    else {
-	      hmx  = fabs(tn_) + fabs(h_);
-	      ihit = fabs(tn_ - tcrit) <= (100. * ETA * hmx);
+	      hmx  = std::abs(tn_) + std::abs(h_);
+	      ihit = std::abs(tn_ - tcrit) <= (100. * ETA * hmx);
 	      if(ihit) {
 		successreturn(y, t, itask, ihit, tcrit, istate);
 		return;
@@ -922,8 +922,8 @@ namespace LSODA {
 	    See if tcrit was reached and jump to exit.
 	  */
 	  if(itask == 5) {
-	    hmx  = fabs(tn_) + fabs(h_);
-	    ihit = fabs(tn_ - tcrit) <= (100. * ETA * hmx);
+	    hmx  = std::abs(tn_) + std::abs(h_);
+	    ihit = std::abs(tn_ - tcrit) <= (100. * ETA * hmx);
 	    successreturn(y, t, itask, ihit, tcrit, istate);
 	    return;
 	  }
@@ -947,7 +947,7 @@ namespace LSODA {
 	  big   = 0.;
 	  imxer = 1;
 	  for(size_t i = 1; i <= n; i++) {
-	    size = fabs(acor[i]) * ewt[i];
+	    size = std::abs(acor[i]) * ewt[i];
 	    if(big < size) {
 	      big   = size;
 	      imxer = i;
@@ -1094,7 +1094,7 @@ namespace LSODA {
       */
       while(1) {
 	while(1) {
-	  if(fabs(rc - 1.) > ccmax)
+	  if(std::abs(rc - 1.) > ccmax)
 	    ipup = miter;
 	  if(nst >= nslp + msbp)
 	    ipup = miter;
@@ -1110,7 +1110,7 @@ namespace LSODA {
 	  if(corflag == 0)
 	    break;
 	  if(corflag == 1) {
-	    rh = std::max(rh, hmin / fabs(h_));
+	    rh = std::max(rh, hmin / std::abs(h_));
 	    scaleh(&rh, &pdh);
 	    continue;
 	  }
@@ -1161,7 +1161,7 @@ namespace LSODA {
 	  if(icount < 0) {
 	    methodswitch(dsm, pnorm, &pdh, &rh);
 	    if(meth_ != mused) {
-	      rh = std::max(rh, hmin / fabs(h_));
+	      rh = std::max(rh, hmin / std::abs(h_));
 	      scaleh(&rh, &pdh);
 	      rmax = 10.;
 	      endstoda();
@@ -1195,7 +1195,7 @@ namespace LSODA {
 	      h_ is changed, but not nq.
 	    */
 	    if(orderflag == 1) {
-	      rh = std::max(rh, hmin / fabs(h_));
+	      rh = std::max(rh, hmin / std::abs(h_));
 	      scaleh(&rh, &pdh);
 	      rmax = 10.;
 	      endstoda();
@@ -1206,7 +1206,7 @@ namespace LSODA {
 	    */
 	    if(orderflag == 2) {
 	      resetcoeff();
-	      rh = std::max(rh, hmin / fabs(h_));
+	      rh = std::max(rh, hmin / std::abs(h_));
 	      scaleh(&rh, &pdh);
 	      rmax = 10.;
 	      endstoda();
@@ -1241,7 +1241,7 @@ namespace LSODA {
 		yh_[i1][i] -= yh_[i1 + 1][i];
 	  }
 	  rmax = 2.;
-	  if(fabs(h_) <= hmin * 1.00001) {
+	  if(std::abs(h_) <= hmin * 1.00001) {
 	    kflag  = -1;
 	    hold   = h_;
 	    jstart = 1;
@@ -1253,12 +1253,12 @@ namespace LSODA {
 	    if(orderflag == 1 || orderflag == 0) {
 	      if(orderflag == 0)
 		rh = std::min(rh, 0.2);
-	      rh = std::max(rh, hmin / fabs(h_));
+	      rh = std::max(rh, hmin / std::abs(h_));
 	      scaleh(&rh, &pdh);
 	    }
 	    if(orderflag == 2) {
 	      resetcoeff();
-	      rh = std::max(rh, hmin / fabs(h_));
+	      rh = std::max(rh, hmin / std::abs(h_));
 	      scaleh(&rh, &pdh);
 	    }
 	    continue;
@@ -1282,7 +1282,7 @@ namespace LSODA {
 	    }
 	    else {
 	      rh = 0.1;
-	      rh = std::max(hmin / fabs(h_), rh);
+	      rh = std::max(hmin / std::abs(h_), rh);
 	      h_ *= rh;
 	      for(i = 1; i <= n; i++)
 		y[i] = yh_[1][i];
@@ -1310,19 +1310,19 @@ namespace LSODA {
       switch(itol_) {
       case 1:
 	for(size_t i = 1; i <= n; i++)
-	  ewt[i] = rtol_[1] * fabs(ycur[i]) + atol_[1];
+	  ewt[i] = rtol_[1] * std::abs(ycur[i]) + atol_[1];
 	break;
       case 2:
 	for(size_t i = 1; i <= n; i++)
-	  ewt[i] = rtol_[1] * fabs(ycur[i]) + atol_[i];
+	  ewt[i] = rtol_[1] * std::abs(ycur[i]) + atol_[i];
 	break;
       case 3:
 	for(size_t i = 1; i <= n; i++)
-	  ewt[i] = rtol_[i] * fabs(ycur[i]) + atol_[1];
+	  ewt[i] = rtol_[i] * std::abs(ycur[i]) + atol_[1];
 	break;
       case 4:
 	for(size_t i = 1; i <= n; i++)
-	  ewt[i] = rtol_[i] * fabs(ycur[i]) + atol_[i];
+	  ewt[i] = rtol_[i] * std::abs(ycur[i]) + atol_[i];
 	break;
       }
 
@@ -1330,7 +1330,7 @@ namespace LSODA {
 
     /* C implementation for SIGN() */
     double sign(double a, double b) {
-      return (b >= 0.0) ? fabs(a) : -fabs(a);
+      return (b >= 0.0) ? std::abs(a) : -std::abs(a);
     }
     
     /*
@@ -1539,7 +1539,7 @@ namespace LSODA {
 	convergence or error test failure.
       */
       *rh = std::min(*rh, rmax);
-      *rh = *rh / std::max(1., fabs(h_) * hmxi * *rh);
+      *rh = *rh / std::max(1., std::abs(h_) * hmxi * *rh);
       /*
 	If meth_ = 1, also restrict the new step size by the stability region.
 	If this reduces h_, set irflag to 1 so that if there are roundoff
@@ -1547,7 +1547,7 @@ namespace LSODA {
       */
       if(meth_ == 1) {
 	irflag = 0;
-	*pdh   = std::max(fabs(h_) * pdlast, 0.000001);
+	*pdh   = std::max(std::abs(h_) * pdlast, 0.000001);
 	if((*rh * *pdh * 1.00001) >= sm1[nq]) {
 	  *rh    = sm1[nq] / *pdh;
 	  irflag = 1;
@@ -1596,12 +1596,12 @@ namespace LSODA {
       }
       if(miter == 2) {
 	fac = vmnorm(n, savf, ewt);
-	r0  = 1000. * fabs(h_) * ETA * ((double)n) * fac;
+	r0  = 1000. * std::abs(h_) * ETA * ((double)n) * fac;
 	if(r0 == 0.)
 	  r0 = 1.;
 	for(j = 1; j <= n; j++) {
 	  yj = y[j];
-	  r  = std::max(sqrteta * fabs(yj), r0 / ewt[j]);
+	  r  = std::max(sqrteta * std::abs(yj), r0 / ewt[j]);
 	  y[j] += r;
 	  fac = -hl0 / r;
 	  (*f)(tn_, &y[1], &acor[1], _data);
@@ -1613,7 +1613,7 @@ namespace LSODA {
 	/*
 	  Compute norm of Jacobian.
 	*/
-	pdnorm = fnorm(n, wm_, ewt) / fabs(hl0);
+	pdnorm = fnorm(n, wm_, ewt) / std::abs(hl0);
 	/*
 	  Add identity matrix.
 	*/
@@ -1640,7 +1640,7 @@ namespace LSODA {
     {
       double vm = 0.;
       for(size_t i = 1; i <= n; i++)
-	vm = std::max(vm, fabs(v[i]) * w[i]);
+	vm = std::max(vm, std::abs(v[i]) * w[i]);
       return vm;
     }
 
@@ -1660,7 +1660,7 @@ namespace LSODA {
       for(size_t i = 1; i <= (size_t)n; i++) {
 	sum = 0.;
 	for(size_t j = 1; j <= (size_t)n; j++)
-	  sum += fabs(a[i][j]) / w[j];
+	  sum += std::abs(a[i][j]) / w[j];
 	an = std::max(an, sum * w[i]);
       }
       return an;
@@ -1772,7 +1772,7 @@ namespace LSODA {
 	  }
 	  dcon = *del * std::min(1., 1.5 * crate) / (tesco[nq][2] * conit);
 	  if(dcon <= 1.) {
-	    pdest = std::max(pdest, rate / fabs(h_ * el[1]));
+	    pdest = std::max(pdest, rate / std::abs(h_ * el[1]));
 	    if(pdest != 0.)
 	      pdlast = pdest;
 	    break;
@@ -1826,7 +1826,7 @@ namespace LSODA {
 	  for(size_t i = 1; i <= n; i++)
 	    yh_[i1][i] -= yh_[i1 + 1][i];
 
-      if(fabs(h_) <= hmin * 1.00001 || *ncf == mxncf) {
+      if(std::abs(h_) <= hmin * 1.00001 || *ncf == mxncf) {
 	*corflag = 2;
 	return;
       }
@@ -1892,7 +1892,7 @@ namespace LSODA {
 	  exsm  = 1. / (double)l;
 	  rh1   = 1. / (1.2 * pow(dsm, exsm) + 0.0000012);
 	  rh1it = 2. * rh1;
-	  *pdh  = pdlast * fabs(h_);
+	  *pdh  = pdlast * std::abs(h_);
 	  if((*pdh * rh1) > 0.00001)
 	    rh1it = sm1[nq] / *pdh;
 	  rh1 = std::min(rh1, rh1it);
@@ -1951,7 +1951,7 @@ namespace LSODA {
 	exm1 = exsm;
       }
       rh1it = 2. * rh1;
-      *pdh  = pdnorm * fabs(h_);
+      *pdh  = pdnorm * std::abs(h_);
       if((*pdh * rh1) > 0.00001)
 	rh1it = sm1[nqm1] / *pdh;
       rh1 = std::min(rh1, rh1it);
@@ -2021,7 +2021,7 @@ namespace LSODA {
 	If meth_ = 1, limit rh accordinfg to the stability region also.
       */
       if(meth_ == 1) {
-	*pdh = std::max(fabs(h_) * pdlast, 0.000001);
+	*pdh = std::max(std::abs(h_) * pdlast, 0.000001);
 	if(l < lmax)
 	  *rhup = std::min(*rhup, sm1[l] / *pdh);
 	rhsm = std::min(rhsm, sm1[nq] / *pdh);
