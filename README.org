@@ -6,24 +6,26 @@
 - We provide an example R function ~lsoda::ode()~, which is similar to ~deSolve::lsoda()~. The former function implements the update of the state vector ~y~ and allows for calculated values, but does not implement events. This function is a proof-of-principle and there is no reason to prefer this function to the one from ~deSolve~.
 - Signatures for ~LSODA::ode()~:
 
-#+begin_src Cpp :exports code :eval no
+#+begin_src Cpp :exports code :eval yes
   typedef void (*LSODA_ODE_SYSTEM_TYPE)(double t, double *y, double *dydt, void *);
-  
-  Rcpp::NumericMatrix ode(std::vector<double> y,
-			  std::vector<double> times,
+
+  template<class Vector>
+  Rcpp::NumericMatrix ode(Vector y,
+			  Vector times,
 			  LSODA_ODE_SYSTEM_TYPE func,
 			  size_t nout = 0, // default value => y.size()
 			  void* data = (void*) nullptr,
 			  double rtol=1e-6, double atol = 1e-6);
   
-  template<class Functor>
-  Rcpp::NumericMatrix ode(std::vector<double> y,
-			  std::vector<double> times,
+  template<class Functor, class Vector>
+  Rcpp::NumericMatrix ode(Vector y,
+			  Vector times,
 			  Functor functor,
 			  double rtol=1e-6, double atol = 1e-6)
 #+end_src
 
-- For the second signature, the functor takes the signature ~std::vector<double>(double,std::vector<double>)~. The functor could be a class or a function. In the following examples, we also show an example using Armadillo.
+- For the first ~ode()~ signature, the template argument ~Vector~ can include ~std::vector<double>~, ~arma::vec~ or ~Eigen::VectorXd~.
+- For the second signature, the functor takes the signature ~Vector(double,Vector)~ for template type ~Vector~ (again including ~std::vector<double>~, ~arma::vec~ or ~Eigen::VectorXd~). The functor could be a class or a function. 
 - Note: The C++ version of ~lsoda~ is a different version to the Fortran code  used in ~deSolve~ and ~scipy~. The differences are minor.
 
 
@@ -31,7 +33,7 @@
 
 - Install the R package from GitHub. I will shortly submit this to CRAN.
 
-#+begin_src R :session *R* :exports code :eval no
+#+begin_src R :session *R* :exports code :eval yes
   devtools::install_github("mclements/lsoda")
 #+end_src
 
@@ -71,7 +73,7 @@
 :     ode
 : [1] -7.533720e-08  7.532629e-08
 
-#+begin_src R :session *R* :results output :exports both :eval no
+#+begin_src R :session *R* :results output :exports both :eval yes
   library(microbenchmark)
   microbenchmark(lsoda::ode(y,times,func))
   microbenchmark(deSolve::ode(y,times,func))
@@ -80,14 +82,14 @@
 #+RESULTS:
 : Unit: milliseconds
 :                        expr      min       lq     mean   median       uq      max neval
-:  lsoda::ode(y, times, func) 3.030573 3.066783 3.256843 3.100018 3.189049 5.937372   100
+:  lsoda::ode(y, times, func) 2.901091 2.955234 3.135087 2.990978 3.068576 4.236913   100
 : Unit: milliseconds
 :                          expr      min       lq     mean   median       uq      max neval
-:  deSolve::ode(y, times, func) 2.969679 3.067279 3.284607 3.124838 3.522614 5.287864   100
+:  deSolve::ode(y, times, func) 2.990957 3.124283 3.322879 3.147007 3.567861 4.308872   100
 
 *** Example: historical C interface with ~(void*) data~
 
-#+begin_src R :session *R* :results output :exports both :eval no
+#+begin_src R :session *R* :results output :exports both :eval yes
   sourceCpp(code="
   // [[Rcpp::depends(lsoda)]]
   #include \"lsoda.h\"
@@ -123,7 +125,7 @@
 
 *** Example: Using a functor class
 
-#+begin_src R :session *R* :results output :exports both :eval no
+#+begin_src R :session *R* :results output :exports both :eval yes
   sourceCpp(code="
   // [[Rcpp::depends(lsoda)]]
   #include \"lsoda.h\"
@@ -167,9 +169,9 @@
 
 *** Example: Using a lambda function
 
-- We see that we can also use a functor that is a lambda function:
+- We can also use a functor that is a lambda function:
 
-#+begin_src R :session *R* :results output :exports both :eval no
+#+begin_src R :session *R* :results output :exports both :eval yes
   sourceCpp(code="
   // [[Rcpp::depends(lsoda)]]
   #include \"lsoda.h\"
@@ -209,49 +211,12 @@
 
 *** Example: Using ~RcppArmadillo~
 
-- The following example provides an ~ode()~ implementation that uses Armadillo vectors.
-- The signature is:
-  
-#+begin_src R :session *R* :results output :exports both :eval no
-  template<class Functor>
-  Rcpp::NumericMatrix ode(arma::vec y,
-			  arma::vec times,
-			  Functor functor,
-			  double rtol=1e-6, double atol = 1e-6);
-#+end_src
-- The functor has a signature ~arma::vec(double,arma::vec)~.
-- We also provide an example.
-
-#+begin_src R :session *R* :results output :exports both :eval no
+#+begin_src R :session *R* :results output :exports both :eval yes
   sourceCpp(code="
   // [[Rcpp::depends(lsoda)]]
   // [[Rcpp::depends(RcppArmadillo)]]
   #include \"RcppArmadillo.h\"
   #include \"lsoda.h\"
-  template<class Functor>
-  void lsoda_arma_adaptor(double t, double* y, double* ydot, void* data) {
-    using Tuple = std::tuple<Functor*, size_t, size_t>;
-    Tuple* tuple = static_cast<Tuple*>(data);
-    Functor* f = std::get<0>(*tuple);
-    size_t neq = std::get<1>(*tuple);
-    // size_t nout = std::get<2>(*tuple);
-    arma::vec yv(neq);
-    std::copy(y,y+neq,yv.begin());
-    arma::vec ydotv = (*f)(t,yv); // determines the functor signature
-    std::copy(ydotv.begin(),ydotv.end(),ydot);
-  }
-  template<class Functor>
-  Rcpp::NumericMatrix ode(arma::vec y,
-			  arma::vec times,
-			  Functor functor,
-			  double rtol=1e-6, double atol = 1e-6) {
-    size_t nout = functor(times[0], y).size();
-    std::tuple<Functor*,size_t,size_t> tuple{&functor, y.size(), nout};
-    std::vector<double> yv(y.begin(), y.end());
-    std::vector<double> timesv(times.begin(), times.end());
-    return LSODA::ode(yv, timesv, lsoda_arma_adaptor<Functor>, nout,
-                      (void*) &tuple, rtol, atol);
-  }
   auto lambda = [](double t, arma::vec y) {
       arma::vec ydot(4);
       ydot[0] = 1E4 * y[1] * y[2] - .04E0 * y[0];
@@ -264,7 +229,7 @@
   Rcpp::NumericMatrix test_lsoda_5(arma::vec y,
                                    arma::vec times,
                                    double rtol = 1-6, double atol = 1e-6) {
-    return ode(y, times, lambda, rtol, atol);
+    return LSODA::ode(y, times, lambda, rtol, atol);
   }")
   test_lsoda_5(c(1,0,0),times,rtol=1e-12,atol=1e-12) |> print(digits=12)
 #+end_src
@@ -285,3 +250,54 @@
 [11,] 4e+08 5.20770650266e-06 2.08309331907e-11 0.9999947922727    1
 [12,] 4e+09 5.20830345857e-07 2.08332245547e-12 0.9999994791676    1
 #+end_example
+
+
+*** Example: Using ~RcppEigen~
+
+#+begin_src R :session *R* :results output :exports both :eval yes
+  sourceCpp(code="
+  // [[Rcpp::depends(lsoda)]]
+  // [[Rcpp::depends(RcppEigen)]]
+  #include \"RcppEigen.h\"
+  #include \"lsoda.h\"
+  auto lambda = [](double t, Eigen::VectorXd y) {
+      Eigen::VectorXd ydot(4);
+      ydot[0] = 1E4 * y[1] * y[2] - .04E0 * y[0];
+      ydot[2] = 3.0E7 * y[1] * y[1];
+      ydot[1] = -1.0 * (ydot[0] + ydot[2]);
+      ydot[3] = y.sum();
+      return ydot;
+    };
+  // [[Rcpp::export]]
+  Rcpp::NumericMatrix test_lsoda_6(Eigen::VectorXd y,
+                                   Eigen::VectorXd times,
+                                   double rtol = 1-6, double atol = 1e-6) {
+    return LSODA::ode(y, times, lambda, rtol, atol);
+  }")
+  test_lsoda_6(c(1,0,0),times,rtol=1e-12,atol=1e-12) |> print(digits=12)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Registered S3 methods overwritten by 'RcppEigen':
+  method               from         
+  predict.fastLm       RcppArmadillo
+  print.fastLm         RcppArmadillo
+  summary.fastLm       RcppArmadillo
+  print.summary.fastLm RcppArmadillo
+       time                y1                y2              y3 res1
+ [1,] 0e+00 1.00000000000e+00 0.00000000000e+00 0.0000000000000    1
+ [2,] 4e-01 9.85172113866e-01 3.38639537906e-05 0.0147940221806    1
+ [3,] 4e+00 9.05518678607e-01 2.24047568782e-05 0.0944589166360    1
+ [4,] 4e+01 7.15827068759e-01 9.18553476609e-06 0.2841637457064    1
+ [5,] 4e+02 4.50518668519e-01 3.22290144228e-06 0.5494781085800    1
+ [6,] 4e+03 1.83202257815e-01 8.94237125505e-07 0.8167968479480    1
+ [7,] 4e+04 3.89833771094e-02 1.62176831695e-07 0.9610164607137    1
+ [8,] 4e+05 4.93827453625e-03 1.98499409412e-08 0.9950617056138    1
+ [9,] 4e+06 5.16809611427e-04 2.06829453100e-09 0.9994831883203    1
+[10,] 4e+07 5.20307254746e-05 2.08133601326e-10 0.9999479690664    1
+[11,] 4e+08 5.20770650266e-06 2.08309331907e-11 0.9999947922727    1
+[12,] 4e+09 5.20830345857e-07 2.08332245547e-12 0.9999994791676    1
+#+end_example
+
+

@@ -67,16 +67,29 @@ namespace LSODA {
   //     for (size_t i=neq; i<nout; i++) ydot[i] = 0.0;
   // }
   
-  template<class Functor>
+  // template<class Functor>
+  // void lsoda_functor_adaptor(double t, double* y, double* ydot, void* data) {
+  //   using Tuple = std::tuple<Functor*, size_t, size_t>;
+  //   Tuple* tuple = static_cast<Tuple*>(data);
+  //   Functor* f = std::get<0>(*tuple);
+  //   size_t neq = std::get<1>(*tuple);
+  //   // size_t nout = std::get<2>(*tuple);
+  //   std::vector<double> yv(neq);
+  //   std::copy(y,y+neq,yv.begin());
+  //   std::vector<double> ydotv = (*f)(t,yv);
+  //   std::copy(ydotv.begin(),ydotv.end(),ydot);
+  // }
+
+  template<class Functor, class Vector>
   void lsoda_functor_adaptor(double t, double* y, double* ydot, void* data) {
     using Tuple = std::tuple<Functor*, size_t, size_t>;
     Tuple* tuple = static_cast<Tuple*>(data);
     Functor* f = std::get<0>(*tuple);
     size_t neq = std::get<1>(*tuple);
     // size_t nout = std::get<2>(*tuple);
-    std::vector<double> yv(neq);
+    Vector yv(neq);
     std::copy(y,y+neq,yv.begin());
-    std::vector<double> ydotv = (*f)(t,yv);
+    Vector ydotv = (*f)(t,yv); // determines the functor signature
     std::copy(ydotv.begin(),ydotv.end(),ydot);
   }
 
@@ -2224,9 +2237,9 @@ namespace LSODA {
   };
 
   // utility wrapper
-  inline
-  Rcpp::NumericMatrix ode(std::vector<double> y,
-			  std::vector<double> times,
+  template<class Vector>
+  Rcpp::NumericMatrix ode(Vector y,
+			  Vector times,
 			  LSODA_ODE_SYSTEM_TYPE func,
 			  size_t nout = 0, // default value => y.size()
 			  void* data = (void*) nullptr,
@@ -2271,14 +2284,17 @@ namespace LSODA {
   }
   // typedef void (*LSODA_ODE_SYSTEM_TYPE)(double t, double *y, double *dydt, void *);
   
-  template<class Functor>
-  Rcpp::NumericMatrix ode(std::vector<double> y,
-			  std::vector<double> times,
+  template<class Functor, class Vector>
+  Rcpp::NumericMatrix ode(Vector y,
+			  Vector times,
 			  Functor functor,
 			  double rtol=1e-6, double atol = 1e-6) {
-    size_t nout = functor(times[0],y).size();
-    std::tuple<Functor*,size_t,size_t> tuple(&functor, y.size(), nout);
-    return ode(y, times, lsoda_functor_adaptor<Functor>, nout, (void*) &tuple, rtol, atol);
+    size_t nout = functor(times[0], y).size();
+    std::tuple<Functor*,size_t,size_t> tuple{&functor, y.size(), nout};
+    std::vector<double> yv(y.begin(), y.end());
+    std::vector<double> timesv(times.begin(), times.end());
+    return ode(yv, timesv, lsoda_functor_adaptor<Functor,Vector>, nout,
+                      (void*) &tuple, rtol, atol);
   }
 
 };
