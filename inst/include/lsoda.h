@@ -33,6 +33,7 @@
 #define LSODA_H
 
 #include <Rcpp.h>
+#include <array>
 
 namespace LSODA {
 
