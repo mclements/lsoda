@@ -12,12 +12,12 @@ Authors@R: c(person("Mark", "Clements",
              person("Alan C.","Hindmarsh", role = "ctb"),
              person("Cleve","Moler", role = "ctb"),
              person("Linda R.","Petzold", role = "ctb"))
-Description: A C++ header library for using the libsoda-cxx C++ library with R.
+Description: A C++ header library for using the "libsoda-cxx" C++ library with R.
 License: MIT + file LICENSE
 URL: https://github.com/mclements/lsoda
 BugReports: https://github.com/mclements/lsoda/issues
 Imports: Rcpp (>= 1.0.12)
-Suggests: deSolve, RcppArmadillo
+Suggests: deSolve, RcppArmadillo, microbenchmark
 LinkingTo: Rcpp
 RoxygenNote: 7.3.2
 Encoding: UTF-8

@@ -937,12 +937,12 @@ namespace LSODA {
 	  REprintf("lsoda -- at t = %g and step size h_ = %g, the\n", tn_, h_);
 	  if(kflag == -1) {
 	    REprintf("         error test failed repeatedly or\n");
-	    REprintf("         with fabs(h_) = hmin\n");
+	    REprintf("         with std::abs(h_) = hmin\n");
 	    *istate = -4;
 	  }
 	  if(kflag == -2) {
 	    REprintf("         corrector convergence failed repeatedly or\n");
-	    REprintf("         with fabs(h_) = hmin\n");
+	    REprintf("         with std::abs(h_) = hmin\n");
 	    *istate = -5;
 	  }
 	  big   = 0.;
@@ -1367,7 +1367,7 @@ namespace LSODA {
 	*iflag = -1;
 	return;
       }
-      tfuzz = 100. * ETA * sign(abs(tn_)+abs(hu), hu);
+      tfuzz = 100. * ETA * sign(std::abs(tn_)+std::abs(hu), hu);
       tp = tn_ - hu - tfuzz;
       // tp = tn_ - hu - 100. * ETA * (tn_ + hu);
       tn1 = tn_ + tfuzz;
