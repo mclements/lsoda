@@ -32,7 +32,7 @@
 
 ** Installation
 
-- Install the R package from GitHub. I will shortly submit this to CRAN.
+- Install the R package from GitHub. The package has been submitted to CRAN.
 
 #+begin_src R :session *R* :exports code :eval yes
   devtools::install_github("mclements/lsoda")
@@ -74,6 +74,8 @@
 :     ode
 : [1] -7.533720e-08  7.532629e-08
 
+- The execution times are similar for ~lsoda::ode()~ and ~deSolve::ode()~:
+
 #+begin_src R :session *R* :results output :exports both :eval yes
   library(microbenchmark)
   microbenchmark(lsoda::ode(y,times,func))
@@ -89,6 +91,8 @@
 :  deSolve::ode(y, times, func) 2.990957 3.124283 3.322879 3.147007 3.567861 4.308872   100
 
 *** Example: historical C interface with ~(void*) data~
+
+- The translation from Fortran to C, and then to C++, uses the following C interface:
 
 #+begin_src R :session *R* :results output :exports both :eval yes
   sourceCpp(code="
@@ -123,6 +127,8 @@
 [11,] 4e+08 5.20770650266e-06 2.08309331907e-11 0.9999947922727    1
 [12,] 4e+09 5.20830345857e-07 2.08332245547e-12 0.9999994791676    1
 #+end_example
+
+- The second signature attempts to simplify the use of the function. See the following examples. 
 
 *** Example: Using a functor class
 
