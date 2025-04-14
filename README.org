@@ -216,7 +216,7 @@
 - The functor has a signature ~arma::vec(double,arma::vec)~.
 - We also provide an example.
 
-#+begin_src R :session *R* :results output :exports code
+#+begin_src R :session *R* :results output :exports both :eval no
   sourceCpp(code="
   // [[Rcpp::depends(lsoda)]]
   // [[Rcpp::depends(RcppArmadillo)]]

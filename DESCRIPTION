@@ -2,12 +2,20 @@ Package: lsoda
 Type: Package
 Title: C++ Header Library for Ordinary Differential Equations
 Version: 1.0
-Authors@R: person(given = "Mark",
-                  family = "Clements",
+Authors@R: c(person("Mark", "Clements",
                   role = c("aut", "cre"),
-                  email = "mark.clements@ki.se")
+                  email = "mark.clements@ki.se"),
+	     person("Dilawar", "Singh", role="ctb"),
+	     person("Heng", "Li", role="ctb"),
+             person("Peter N.","Brown", role = "ctb"),
+             person("George D.","Byrne", role = "ctb"),
+             person("Alan C.","Hindmarsh", role = "ctb"),
+             person("Cleve","Moler", role = "ctb"),
+             person("Linda R.","Petzold", role = "ctb"))
 Description: A C++ header library for using the libsoda-cxx C++ library with R.
 License: MIT + file LICENSE
+URL: https://github.com/mclements/lsoda
+BugReports: https://github.com/mclements/lsoda/issues
 Imports: Rcpp (>= 1.0.12)
 Suggests: deSolve, RcppArmadillo
 LinkingTo: Rcpp
