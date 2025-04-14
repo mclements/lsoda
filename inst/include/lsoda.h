@@ -1848,7 +1848,7 @@ namespace LSODA {
     {
       iersl = 0;
       if(miter != 2) {
-	printf("solsy -- miter != 2\n");
+	REprintf("solsy -- miter != 2\n");
 	return;
       }
       if(miter == 2)

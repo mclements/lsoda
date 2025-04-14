@@ -8,4 +8,8 @@
 \description{
 To learn more about `libsoda-cxx` visit the [website](https://github.com/dilawar/libsoda-cxx).
 }
+\author{
+\strong{Maintainer}: Mark Clements \email{mark.clements@ki.se}
+
+}
 \keyword{internal}
