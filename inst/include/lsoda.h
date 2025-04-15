@@ -2210,6 +2210,20 @@ namespace LSODA {
 
   };
 
+  // call func and then zero the ydot[] values for the additional results
+  inline
+  void func_zeros(double t, double* y, double* ydot, void* data) {
+    using Tuple = std::tuple<LSODA_ODE_SYSTEM_TYPE,size_t,size_t,void*>;
+    Tuple* tuple = static_cast<Tuple*>(data);
+    LSODA_ODE_SYSTEM_TYPE func = std::get<0>(*tuple);
+    size_t neq = std::get<1>(*tuple);
+    size_t nout = std::get<2>(*tuple);
+    void* nested_data = std::get<3>(*tuple);
+    (*func)(t,y,ydot,nested_data);
+    if (nout > neq)
+      for (size_t j = neq; j<nout; j++) ydot[j]=0.0; 
+  }
+  
   // utility wrapper
   template<class Vector>
   Rcpp::NumericMatrix ode(Vector y,
@@ -2218,8 +2232,9 @@ namespace LSODA {
 			  size_t nout = 0, // default value => y.size()
 			  void* data = (void*) nullptr,
 			  double rtol=1e-6, double atol = 1e-6) {
-    if (nout == 0) nout = y.size();
-    if (nout < y.size()) Rcpp::stop("nout < y.size()");
+    size_t neq = y.size();
+    if (nout == 0) nout = neq;
+    if (nout < neq) Rcpp::stop("nout < neq");
     LSODA lsoda;
     double t = times[0], tout;
     std::vector<double> yin(nout,0.0), yout(nout), ydot(nout);
@@ -2228,23 +2243,28 @@ namespace LSODA {
     std::copy(y.begin(),y.end(),yin.begin());
     Rcpp::NumericMatrix res(times.size(),nout+1);
     res(0,0) = t;
-    for(j=0; j<y.size(); j++) res(0,j+1)=y[j];
-    if (nout > y.size()) {
+    for(j=0; j<neq; j++) res(0,j+1)=y[j];
+    if (nout > neq) {
       (*func)(t, &yin[0], &ydot[0], data); // could this change data?
-      for(j=y.size(); j<nout; j++)
+      for(j=neq; j<nout; j++)
 	res(0,j+1)=ydot[j];
     }
     for(i = 1; i < times.size(); i++) {
         tout = times[i];
-        lsoda.lsoda_function(func, nout, yin, yout, &t, tout, &istate, data, rtol, atol);
+	if (nout > neq) {
+	  std::tuple<LSODA_ODE_SYSTEM_TYPE,size_t,size_t,void*> tuple{func,neq,nout,data};
+	  lsoda.lsoda_function(func_zeros, nout, yin, yout, &t, tout, &istate,
+			       (void*) &tuple, rtol, atol);
+	} else
+	  lsoda.lsoda_function(func, nout, yin, yout, &t, tout, &istate, data,
+			       rtol, atol);
         yin = yout;
         res(i,0) = t;
-        for(j=0; j<y.size(); j++) res(i,j+1)=yout[j];
-	if (nout > y.size()) {
+        for(j=0; j<neq; j++) res(i,j+1)=yout[j];
+	if (nout > neq) {
 	  (*func)(t, &yin[0], &ydot[0], data); // could this change data?
-	  for(j=y.size(); j<nout; j++) {
+	  for(j=neq; j<nout; j++) {
 	    res(i,j+1)=ydot[j];
-	    yin[j]=0.0; // reset values for better numerical properties
 	  }
 	}
     }
