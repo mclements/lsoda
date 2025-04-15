@@ -32,6 +32,7 @@
 
 ** Installation
 
+- The only dependency is ~Rcpp~.
 - Install the R package from GitHub. The package has been submitted to CRAN.
 
 #+begin_src R :session *R* :exports code :eval yes
@@ -76,7 +77,7 @@
 
 - The execution times are similar for ~lsoda::ode()~ and ~deSolve::ode()~:
 
-#+begin_src R :session *R* :results output :exports both :eval yes
+#+begin_src R :session *R* :results output :exports both :eval no
   library(microbenchmark)
   microbenchmark(lsoda::ode(y,times,func))
   microbenchmark(deSolve::ode(y,times,func))
@@ -84,11 +85,11 @@
 
 #+RESULTS:
 : Unit: milliseconds
-:                        expr      min       lq    mean   median       uq      max neval
-:  lsoda::ode(y, times, func) 3.234185 3.274402 3.43734 3.310231 3.333376 4.510027   100
+:                        expr      min       lq     mean   median       uq      max neval
+:  lsoda::ode(y, times, func) 3.071473 3.164576 3.284264 3.217925 3.279549 4.419929   100
 : Unit: milliseconds
 :                          expr      min       lq     mean   median       uq      max neval
-:  deSolve::ode(y, times, func) 2.993109 3.068872 3.329041 3.093007 3.706113 4.410133   100
+:  deSolve::ode(y, times, func) 2.930345 2.965816 3.106746 2.986001 3.075975 4.216918   100
 
 *** Example: historical C interface with ~(void*) data~
 
@@ -169,8 +170,8 @@
  [8,] 4e+05 4.93827482381e-03 1.98499421037e-08 0.9950617053263    1
  [9,] 4e+06 5.16809933531e-04 2.06829582151e-09 0.9994831879982    1
 [10,] 4e+07 5.20309786314e-05 2.08134614063e-10 0.9999479688132    1
-[11,] 4e+08 5.20788235083e-06 2.08316365914e-11 0.9999947920968    1
-[12,] 4e+09 5.20971333680e-07 2.08388640750e-12 0.9999994790266    1
+[11,] 4e+08 5.20788235135e-06 2.08316365935e-11 0.9999947920968    1
+[12,] 4e+09 5.20971334176e-07 2.08388640948e-12 0.9999994790266    1
 #+end_example
 
 

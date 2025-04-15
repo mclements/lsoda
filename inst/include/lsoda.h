@@ -2208,20 +2208,21 @@ namespace LSODA {
   public:
     void *param = nullptr;
 
-  };
+  }; // LSODA class
 
-  // call func and then zero the ydot[] values for the additional results
+  // call func for neq arguments
   inline
-  void func_zeros(double t, double* y, double* ydot, void* data) {
+  void func_trunc(double t, double* y, double* ydot, void* data) {
     using Tuple = std::tuple<LSODA_ODE_SYSTEM_TYPE,size_t,size_t,void*>;
     Tuple* tuple = static_cast<Tuple*>(data);
     LSODA_ODE_SYSTEM_TYPE func = std::get<0>(*tuple);
     size_t neq = std::get<1>(*tuple);
     size_t nout = std::get<2>(*tuple);
     void* nested_data = std::get<3>(*tuple);
-    (*func)(t,y,ydot,nested_data);
-    if (nout > neq)
-      for (size_t j = neq; j<nout; j++) ydot[j]=0.0; 
+    std::vector<double> yv(y,y+neq), ydotv(nout);
+    yv.resize(nout);
+    (*func)(t,&yv[0],&ydotv[0],nested_data);
+    std::copy(ydotv.begin(), ydotv.begin()+neq, ydot);
   }
   
   // utility wrapper
@@ -2237,42 +2238,43 @@ namespace LSODA {
     if (nout < neq) Rcpp::stop("nout < neq");
     LSODA lsoda;
     double t = times[0], tout;
-    std::vector<double> yin(nout,0.0), yout(nout), ydot(nout);
+    std::vector<double> yin(y.begin(), y.end()), yout(neq), ydot(nout);
     int istate = 1;
     size_t i, j;
-    std::copy(y.begin(),y.end(),yin.begin());
     Rcpp::NumericMatrix res(times.size(),nout+1);
     res(0,0) = t;
-    for(j=0; j<neq; j++) res(0,j+1)=y[j];
+    for(j=0; j<neq; j++) res(0,j+1)=yin[j];
     if (nout > neq) {
+      yin.resize(nout);
       (*func)(t, &yin[0], &ydot[0], data); // could this change data?
+      yin.resize(neq);
       for(j=neq; j<nout; j++)
 	res(0,j+1)=ydot[j];
     }
+    std::tuple<LSODA_ODE_SYSTEM_TYPE,size_t,size_t,void*> tuple{func,neq,nout,data};
     for(i = 1; i < times.size(); i++) {
         tout = times[i];
 	if (nout > neq) {
-	  std::tuple<LSODA_ODE_SYSTEM_TYPE,size_t,size_t,void*> tuple{func,neq,nout,data};
-	  lsoda.lsoda_function(func_zeros, nout, yin, yout, &t, tout, &istate,
+	  lsoda.lsoda_function(func_trunc, neq, yin, yout, &t, tout, &istate,
 			       (void*) &tuple, rtol, atol);
 	} else
-	  lsoda.lsoda_function(func, nout, yin, yout, &t, tout, &istate, data,
+	  lsoda.lsoda_function(func, neq, yin, yout, &t, tout, &istate, data,
 			       rtol, atol);
         yin = yout;
         res(i,0) = t;
         for(j=0; j<neq; j++) res(i,j+1)=yout[j];
 	if (nout > neq) {
+	  yin.resize(nout);
 	  (*func)(t, &yin[0], &ydot[0], data); // could this change data?
-	  for(j=neq; j<nout; j++) {
-	    res(i,j+1)=ydot[j];
-	  }
+	  yin.resize(neq);
+	  for(j=neq; j<nout; j++) res(i,j+1)=ydot[j];
 	}
     }
     Rcpp::CharacterVector nms(nout+1);
     nms[0] = "time";
-    for (j=0; j<y.size(); j++) nms[j+1] = "y" + std::to_string(j+1);
-    if (nout > y.size())
-      for(j=y.size(); j<nout; j++) nms[j+1] = "res" + std::to_string(j-y.size()+1);
+    for (j=0; j<neq; j++) nms[j+1] = "y" + std::to_string(j+1);
+    if (nout > neq)
+      for(j=neq; j<nout; j++) nms[j+1] = "res" + std::to_string(j-neq+1);
     colnames(res) = nms;
     return res;
   }
