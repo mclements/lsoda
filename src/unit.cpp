@@ -2,6 +2,27 @@
 
 void unit() {}
 
+namespace LSODA {
+
+  void lsoda_rfunctor_adaptor(double t, double* y, double* ydot, void* data) {
+    using Tuple = std::tuple<Rcpp::Function, size_t, size_t>;
+    Tuple* tuple = static_cast<Tuple*>(data);
+    Rcpp::Function f = std::get<0>(*tuple);
+    size_t neq = std::get<1>(*tuple);
+    size_t nout = std::get<2>(*tuple);
+    std::vector<double> yv(neq);
+    std::copy(y,y+neq,yv.begin());
+    Rcpp::List vals = Rcpp::as<Rcpp::List>(f(t,yv));
+    std::vector<double> ydotv = Rcpp::as<std::vector<double> >(vals[0]);
+    std::copy(ydotv.begin(),ydotv.end(),ydot);
+    if (vals.size() > 1 && nout > neq) {
+      std::vector<double> yresv = Rcpp::as<std::vector<double> >(vals[1]);
+      std::copy(yresv.begin(),yresv.end(),ydot+neq);
+    }
+  }
+
+} // namespace LSODA
+
 //' Ordinary differential equation solver using lsoda
 //' @param y vector of initial state values
 //' @param times vector of times -- including the start time

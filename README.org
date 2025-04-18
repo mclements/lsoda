@@ -24,8 +24,8 @@
 			  double rtol=1e-6, double atol = 1e-6)
 #+end_src
 
-- For the first ~ode()~ signature, the template argument ~Vector~ can include ~std::vector<double>~, ~arma::vec~ or ~Eigen::VectorXd~.
-- For the second signature, the functor takes the signature ~Vector(double,Vector)~ for template type ~Vector~ (again including ~std::vector<double>~, ~arma::vec~ or ~Eigen::VectorXd~). The functor can be a class with a method ~(Vector)operator()(double,Vector)~, or a function.
+- For the first ~ode()~ signature, the template argument ~Vector~ can include ~std::vector<double>~, ~arma::vec~ or ~Eigen::VectorXd~. The variable ~nout~ should be the length of the ~dydt~ from ~func~, which is a vector of derivatives (first) /and possibly any other results/.
+- For the second signature, the functor takes the signature ~Vector(double,Vector)~ for template type ~Vector~ (again including ~std::vector<double>~, ~arma::vec~ or ~Eigen::VectorXd~). The functor can be a class with a method ~(Vector)operator()(double,Vector)~, or a function. The functor should return a Vector of derivatives (first) /and possibly any other results/. 
 - The ~LSODA::ode()~ functions return a ~Rcpp::NumericMatrix~ with the first column being time, then with columns for the state vectors, then with columns for the other results.
 - Note: The C++ version of ~lsoda~ is a different version to the Fortran code  used in ~deSolve~ and ~scipy~. The differences are minor.
 

@@ -19,11 +19,12 @@
  *        License:  MIT License
  *
  * Further changes by Mark Clements:
+ *
  * - Refactored into a header-only library
- * - Simplified the includes to <Rcpp.h>
+ * - Simplified the includes to <Rcpp.h> and (for compiling on Windows:) <array>
  * - Used the LSODA namespace
  * - Modest changes to lsoda() to transform to and from 1-based indexing
- * - Main calling functions are ode().
+ * - Main calling functions are ode() -- here and in src/unit.cpp.
  *
  *         Author:  Mark Clements <mark.clements@ki.se>
  *   Organization:  Karolinska Institutet
@@ -54,37 +55,6 @@ namespace LSODA {
   constexpr double ETA = std::numeric_limits<double>::epsilon();
   // #define ETA 2.2204460492503131e-16
   
-  template<class Functor, class Vector>
-  void lsoda_functor_adaptor(double t, double* y, double* ydot, void* data) {
-    using Tuple = std::tuple<Functor*, size_t, size_t>;
-    Tuple* tuple = static_cast<Tuple*>(data);
-    Functor* f = std::get<0>(*tuple);
-    size_t neq = std::get<1>(*tuple);
-    // size_t nout = std::get<2>(*tuple);
-    Vector yv(neq);
-    std::copy(y,y+neq,yv.begin());
-    Vector ydotv = (*f)(t,yv); // determines the functor signature
-    std::copy(ydotv.begin(),ydotv.end(),ydot);
-  }
-
-  inline
-  void lsoda_rfunctor_adaptor(double t, double* y, double* ydot, void* data) {
-    using Tuple = std::tuple<Rcpp::Function, size_t, size_t>;
-    Tuple* tuple = static_cast<Tuple*>(data);
-    Rcpp::Function f = std::get<0>(*tuple);
-    size_t neq = std::get<1>(*tuple);
-    size_t nout = std::get<2>(*tuple);
-    std::vector<double> yv(neq);
-    std::copy(y,y+neq,yv.begin());
-    Rcpp::List vals = Rcpp::as<Rcpp::List>(f(t,yv));
-    std::vector<double> ydotv = Rcpp::as<std::vector<double> >(vals[0]);
-    std::copy(ydotv.begin(),ydotv.end(),ydot);
-    if (vals.size() > 1 && nout > neq) {
-      std::vector<double> yresv = Rcpp::as<std::vector<double> >(vals[1]);
-      std::copy(yresv.begin(),yresv.end(),ydot+neq);
-    }
-  }
-
   class LSODA {
 
   public:
@@ -2280,6 +2250,20 @@ namespace LSODA {
   }
   // typedef void (*LSODA_ODE_SYSTEM_TYPE)(double t, double *y, double *dydt, void *);
   
+  // adaptor called by the functor ode()
+  template<class Functor, class Vector>
+  void lsoda_functor_adaptor(double t, double* y, double* ydot, void* data) {
+    using Tuple = std::tuple<Functor*, size_t, size_t>;
+    Tuple* tuple = static_cast<Tuple*>(data);
+    Functor* f = std::get<0>(*tuple);
+    size_t neq = std::get<1>(*tuple);
+    // size_t nout = std::get<2>(*tuple);
+    Vector yv(neq);
+    std::copy(y,y+neq,yv.begin());
+    Vector ydotv = (*f)(t,yv); // determines the functor signature
+    std::copy(ydotv.begin(),ydotv.end(),ydot);
+  }
+
   template<class Functor, class Vector>
   Rcpp::NumericMatrix ode(Vector y,
 			  Vector times,
@@ -2293,6 +2277,6 @@ namespace LSODA {
                       (void*) &tuple, rtol, atol);
   }
 
-};
+} // namespace LSODA
 
 #endif /* end of include guard: LSODA_H */

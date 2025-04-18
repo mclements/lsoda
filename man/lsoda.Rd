@@ -8,8 +8,27 @@
 \description{
 To learn more about `libsoda-cxx` visit the [website](https://github.com/dilawar/libsoda-cxx).
 }
+\seealso{
+Useful links:
+\itemize{
+  \item \url{https://github.com/mclements/lsoda}
+  \item Report bugs at \url{https://github.com/mclements/lsoda/issues}
+}
+
+}
 \author{
 \strong{Maintainer}: Mark Clements \email{mark.clements@ki.se}
+
+Other contributors:
+\itemize{
+  \item Dilawar Singh [contributor]
+  \item Heng Li [contributor]
+  \item Peter N. Brown [contributor]
+  \item George D. Byrne [contributor]
+  \item Alan C. Hindmarsh [contributor]
+  \item Cleve Moler [contributor]
+  \item Linda R. Petzold [contributor]
+}
 
 }
 \keyword{internal}
