@@ -2141,7 +2141,7 @@ namespace LSODA {
     std::array<std::array<double, 14>, 13> elco;
     std::array<std::array<double, 4>, 13> tesco;
 
-    size_t illin, init, ierpj, iersl, jcur, l, miter, maxord, maxcor, msbp, mxncf;
+    size_t illin, init = 0, ierpj, iersl, jcur, l, miter, maxord, maxcor, msbp, mxncf;
 
     int kflag, jstart, iret;
 
