@@ -4,7 +4,7 @@
 \name{lsoda}
 \alias{lsoda-package}
 \alias{lsoda}
-\title{lsoda: C++ Header Library for Ordinary Differential Equations}
+\title{lsoda: 'C++' Header Library for Ordinary Differential Equations}
 \description{
 To learn more about `libsoda-cxx` visit the [website](https://github.com/dilawar/libsoda-cxx).
 }

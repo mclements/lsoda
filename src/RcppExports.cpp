@@ -11,9 +11,9 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
-// ode
-Rcpp::NumericMatrix ode(std::vector<double> y, std::vector<double> times, Rcpp::Function func, double rtol, double atol);
-RcppExport SEXP _lsoda_ode(SEXP ySEXP, SEXP timesSEXP, SEXP funcSEXP, SEXP rtolSEXP, SEXP atolSEXP) {
+// ode_cpp
+Rcpp::NumericMatrix ode_cpp(std::vector<double> y, std::vector<double> times, Rcpp::Function func, double rtol, double atol);
+RcppExport SEXP _lsoda_ode_cpp(SEXP ySEXP, SEXP timesSEXP, SEXP funcSEXP, SEXP rtolSEXP, SEXP atolSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -22,13 +22,13 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< Rcpp::Function >::type func(funcSEXP);
     Rcpp::traits::input_parameter< double >::type rtol(rtolSEXP);
     Rcpp::traits::input_parameter< double >::type atol(atolSEXP);
-    rcpp_result_gen = Rcpp::wrap(ode(y, times, func, rtol, atol));
+    rcpp_result_gen = Rcpp::wrap(ode_cpp(y, times, func, rtol, atol));
     return rcpp_result_gen;
 END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_lsoda_ode", (DL_FUNC) &_lsoda_ode, 5},
+    {"_lsoda_ode_cpp", (DL_FUNC) &_lsoda_ode_cpp, 5},
     {NULL, NULL, 0}
 };
 

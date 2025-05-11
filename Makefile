@@ -6,3 +6,6 @@ check:
 
 build:
 	$(R) CMD build .
+
+install:
+	$(R) CMD INSTALL .
